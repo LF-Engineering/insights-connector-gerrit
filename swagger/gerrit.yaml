@@ -92,7 +92,7 @@ definitions:
         x-nullable: true
       Key:
         type: string
-        description: FIXME: may be needed to reconstruct gerrit structures
+        description: FIXME may be needed to reconstruct gerrit structures
         example: "150"
         x-nullable: true
       CommitSHA:
