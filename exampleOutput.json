@@ -8,201 +8,1865 @@
     {
       "CodeChangeRequest": {
         "Activities": null,
-        "CodeChangeRequestId": "Ie2b29a28624f0f578864d3b8423a915f5e654247",
-        "CreatedAt": "2021-07-29T14:23:47.000Z",
+        "ClosedAt": "2021-07-06T14:27:09.000Z",
+        "CodeChangeRequestId": "Id005e22567fc5fa09f1fa8f5b455b1645651e254",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-06-30T07:51:06.000Z",
         "DataSourceId": "gerrit",
-        "Id": "eb26d3a645d560deb53dbdb50940bc470377fdad",
-        "UpdatedAt": "2021-07-29T14:39:41.000Z"
+        "Id": "ff0476888068416094e55dc6474e08504e39692d",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-06T14:27:09.000Z",
+        "State": "MERGED",
+        "Title": "Use yyyy/mm/dd format in Changelog",
+        "UpdatedAt": "2021-07-06T14:27:09.000Z"
       }
     },
     {
       "CodeChangeRequest": {
         "Activities": null,
-        "CodeChangeRequestId": "Id50ecf9fd968c58b96143d50755e31fb58d0b229",
-        "CreatedAt": "2021-07-29T15:12:27.000Z",
+        "ClosedAt": "2021-07-06T13:09:56.000Z",
+        "CodeChangeRequestId": "Ice0e01ebf15a50f3edc683ea00e6540fa399fbed",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-05T16:22:40.000Z",
         "DataSourceId": "gerrit",
-        "Id": "666e11f535e86fa8c0eaa711bac5c31a38c423bb",
-        "UpdatedAt": "2021-07-30T16:45:28.000Z"
+        "Id": "d09e45ed592a8c92d7e972824869ddbc633f040f",
+        "IsClosed": true,
+        "State": "ABANDONED",
+        "Title": "Implement Plugin Registration in DMI-Plugin",
+        "UpdatedAt": "2021-07-06T13:09:56.000Z"
       }
     },
     {
       "CodeChangeRequest": {
         "Activities": null,
-        "CodeChangeRequestId": "I0b40ec076fceaad16e7b3699e2fcd25cb0069623",
-        "CreatedAt": "2021-07-30T13:53:26.000Z",
+        "ClosedAt": "2021-07-06T15:24:15.000Z",
+        "CodeChangeRequestId": "Ic5adddb4107accb9476016f9a56147ec5bd97893",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-01T14:01:43.000Z",
         "DataSourceId": "gerrit",
-        "Id": "f96c894a6cf19fe910f8df32471feb1bd7fbd3f5",
-        "UpdatedAt": "2021-07-30T13:56:11.000Z"
+        "Id": "7cdd61418371726f754cc23bd15aeba274939fe1",
+        "IsClosed": true,
+        "State": "ABANDONED",
+        "Title": "[DMAAP-CLIENT] Add hk2 dependency",
+        "UpdatedAt": "2021-07-06T15:24:15.000Z"
       }
     },
     {
       "CodeChangeRequest": {
         "Activities": null,
-        "CodeChangeRequestId": "I2b0aa4c368dee3cb6641bed33a8d3be6323b457d",
-        "CreatedAt": "2021-07-29T14:17:27.000Z",
+        "ClosedAt": "2021-07-06T12:44:27.000Z",
+        "CodeChangeRequestId": "I9c6131a16ad620aa8b0efeac627e3507190f479d",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-05T20:17:27.000Z",
         "DataSourceId": "gerrit",
-        "Id": "d592bbad14c5bce6bb780dd4c45ccc012eed158a",
-        "UpdatedAt": "2021-07-29T15:36:40.000Z"
+        "Id": "603a19ada1ff44ea10080816c3784cddeeaa0737",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-06T12:44:27.000Z",
+        "State": "MERGED",
+        "Title": "AAI schema changes -- cloud lease line This update introduces edgerules between connectivity to many uni; many connectivity to many connectivity; many connectivity to many vpn-binding.",
+        "UpdatedAt": "2021-07-06T12:44:27.000Z"
       }
     },
     {
       "CodeChangeRequest": {
         "Activities": null,
-        "CodeChangeRequestId": "I794304fc88be28c192c4d16c74c73f972d5ff308",
-        "CreatedAt": "2021-07-29T12:51:43.000Z",
+        "ClosedAt": "2021-07-06T13:52:52.000Z",
+        "CodeChangeRequestId": "I23d42d8a081d12b428c14a01931a42ae8c516592",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-05T16:40:10.000Z",
         "DataSourceId": "gerrit",
-        "Id": "169bb86e2edb6f5b00960f71072ee7cc1b5d35cc",
-        "UpdatedAt": "2021-07-30T05:30:02.000Z"
+        "Id": "5ba75d6bf9f5633d031afcc1ffc8eb4162255515",
+        "IsClosed": true,
+        "State": "ABANDONED",
+        "Title": "Addition of missing licenses to files",
+        "UpdatedAt": "2021-07-06T13:52:52.000Z"
       }
     },
     {
       "CodeChangeRequest": {
         "Activities": null,
-        "CodeChangeRequestId": "I63de3f84b774dd95cf760e602ae1da286dadb5c6",
-        "CreatedAt": "2021-07-29T14:22:45.000Z",
+        "ClosedAt": "2021-07-08T00:47:18.000Z",
+        "CodeChangeRequestId": "I8010f3dffdc6f79151c4ad4de845b71bead0b9ce",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-07T06:58:01.000Z",
         "DataSourceId": "gerrit",
-        "Id": "e0aee599ef1469ea5fcab6d4a8b7a4a53f5fc311",
-        "UpdatedAt": "2021-07-29T15:26:43.000Z"
+        "Id": "e5893e3a7ca31ebc77e7adb575aada50c5cd56da",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-08T00:47:18.000Z",
+        "State": "MERGED",
+        "Title": "Update project committers info",
+        "UpdatedAt": "2021-07-08T00:47:18.000Z"
       }
     },
     {
       "CodeChangeRequest": {
         "Activities": null,
-        "CodeChangeRequestId": "Ibd62021424c7c69467fef8af897709e89ce499a3",
-        "CreatedAt": "2021-07-20T14:09:49.000Z",
+        "ClosedAt": "2021-07-06T10:57:25.000Z",
+        "CodeChangeRequestId": "Id1b97fc9a4a222afa9e0fadb8c096da84e940a15",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-05T16:44:25.000Z",
         "DataSourceId": "gerrit",
-        "Id": "7a490aa796bc641dcf85f7f03ebf42ecc73b169f",
-        "UpdatedAt": "2021-07-29T15:20:50.000Z"
+        "Id": "160224943bb81c404a3c27089cd5f8b9acb6fef3",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-06T10:57:25.000Z",
+        "State": "MERGED",
+        "Title": "Addition of missing license to INFO.yaml",
+        "UpdatedAt": "2021-07-06T10:57:25.000Z"
       }
     },
     {
       "CodeChangeRequest": {
         "Activities": null,
-        "CodeChangeRequestId": "I5e2c2ebe5af7ee86cc213f0861516664cf4399a7",
-        "CreatedAt": "2021-07-28T22:26:31.000Z",
+        "ClosedAt": "2021-07-06T14:26:40.000Z",
+        "CodeChangeRequestId": "Ie0d4bc41f6f83d7cfdd3abaa3266ff8ac5a91c2e",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-06-30T07:51:06.000Z",
         "DataSourceId": "gerrit",
-        "Id": "2aecc9566aba407949a2a49eec1eba8cfb069f47",
-        "UpdatedAt": "2021-07-29T16:41:18.000Z"
+        "Id": "d64ca506dcc4a4a50ecccc7281812d65184bd85e",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-06T14:26:40.000Z",
+        "State": "MERGED",
+        "Title": "Fix pytest failure if http_proxy is set",
+        "UpdatedAt": "2021-07-06T14:26:40.000Z"
       }
     },
     {
       "CodeChangeRequest": {
         "Activities": null,
-        "CodeChangeRequestId": "Iff73963e7c75016cdba158841bc4c904180eebac",
-        "CreatedAt": "2021-07-29T09:53:48.000Z",
+        "ClosedAt": "2021-07-02T01:19:20.000Z",
+        "CodeChangeRequestId": "I3835583e5caa71163cd8627f3e3d7a6b6aabb608",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-02T00:50:26.000Z",
         "DataSourceId": "gerrit",
-        "Id": "47ac8dfa66ff4b9b9fb40547881c5c004f83e1c5",
-        "UpdatedAt": "2021-07-30T06:48:17.000Z"
+        "Id": "94a3dc794a569344d481460a6d9b64825a09eec8",
+        "IsClosed": true,
+        "State": "ABANDONED",
+        "Title": "Release policy-handler 5.1.3",
+        "UpdatedAt": "2021-07-02T01:19:20.000Z"
       }
     },
     {
       "CodeChangeRequest": {
         "Activities": null,
-        "CodeChangeRequestId": "I46a41146fb69cf99e4bfaedc4a94807b025832af",
-        "CreatedAt": "2021-07-20T07:08:35.000Z",
+        "ClosedAt": "2021-07-06T14:18:56.000Z",
+        "CodeChangeRequestId": "I82396f918c69d9c27d0a00fa0e97b3e6b138e951",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-02T10:10:17.000Z",
         "DataSourceId": "gerrit",
-        "Id": "37f24623cd7e364081e03a603c826bc073605399",
-        "UpdatedAt": "2021-07-29T14:23:23.000Z"
+        "Id": "4bb68156a93a3f0485b16ded3d13d51133ff9938",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-06T14:18:56.000Z",
+        "State": "MERGED",
+        "Title": "Convert clamp-common unit tests to JUnit 5",
+        "UpdatedAt": "2021-07-06T14:18:56.000Z"
       }
     },
     {
       "CodeChangeRequest": {
         "Activities": null,
-        "CodeChangeRequestId": "I935898fcf1ae74dc8f162153ff2cf4744b8f2f99",
-        "CreatedAt": "2021-07-27T06:47:12.000Z",
+        "ClosedAt": "2021-07-02T07:38:21.000Z",
+        "CodeChangeRequestId": "I093fe3f1390769f9acf2cfe85dd0d4edf0539de8",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-06-30T13:09:41.000Z",
         "DataSourceId": "gerrit",
-        "Id": "4aa7247962d94f0b7e33fa4c1cedb5704c8d271e",
-        "UpdatedAt": "2021-07-30T11:20:40.000Z"
+        "Id": "b9d157dfaa79c82517deae33d1345f6105952159",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-02T07:38:21.000Z",
+        "State": "MERGED",
+        "Title": "Add ability to turn on/off pdp statistics",
+        "UpdatedAt": "2021-07-02T07:38:21.000Z"
       }
     },
     {
       "CodeChangeRequest": {
         "Activities": null,
-        "CodeChangeRequestId": "Ibe503fd109559e36d40fba90feb58dea9d1919ab",
-        "CreatedAt": "2021-07-27T21:03:27.000Z",
+        "ClosedAt": "2021-07-07T00:28:24.000Z",
+        "CodeChangeRequestId": "Id9f4a383cd9ece13253c0b35f25ac114c33e7d9b",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-01T08:19:36.000Z",
         "DataSourceId": "gerrit",
-        "Id": "b757e127e4cf982a4eba0d5d1496a3c805661487",
-        "UpdatedAt": "2021-07-29T18:24:16.000Z"
+        "Id": "59cdc8bba6bc031edb65cbabbfc9fac3331ac64a",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-07T00:28:24.000Z",
+        "State": "MERGED",
+        "Title": "Chore: Remove functest from sonarcloud.io",
+        "UpdatedAt": "2021-07-07T00:28:24.000Z"
       }
     },
     {
       "CodeChangeRequest": {
         "Activities": null,
-        "CodeChangeRequestId": "If1e7460ef5ed86fd470396f1e2ed8cc3c8af70c4",
-        "CreatedAt": "2021-07-28T16:26:23.000Z",
+        "ClosedAt": "2021-07-01T21:07:09.000Z",
+        "CodeChangeRequestId": "Ida3880b5afbacba347f794c93293a230cb5eaba2",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-01T17:34:06.000Z",
         "DataSourceId": "gerrit",
-        "Id": "ad48b9fecbe2ca49793add5bea9ef96bbbfe346d",
-        "UpdatedAt": "2021-07-30T17:10:10.000Z"
+        "Id": "0716dd758171012ad28331f6d439a10dcac42458",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-01T21:07:09.000Z",
+        "State": "MERGED",
+        "Title": "Release policy-handler 5.1.3",
+        "UpdatedAt": "2021-07-01T21:07:09.000Z"
       }
     },
     {
       "CodeChangeRequest": {
         "Activities": null,
-        "CodeChangeRequestId": "Id6f1a33b86369b54af70094686d3a15d4dca3b15",
-        "CreatedAt": "2021-07-26T12:12:57.000Z",
+        "ClosedAt": "2021-07-07T00:39:37.000Z",
+        "CodeChangeRequestId": "I54febe5692db9488fe73a2b4653f91e45cefcc10",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-06T18:50:25.000Z",
         "DataSourceId": "gerrit",
-        "Id": "67df9ccf633c2e4a5cd5449ff136b91a7fd4f3d0",
-        "UpdatedAt": "2021-07-29T11:02:07.000Z"
+        "Id": "1fedc0aa7716da4a24a1f4e26cf34a24b6eb4bca",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-07T00:39:37.000Z",
+        "State": "MERGED",
+        "Title": "[DMAAP-KAFKA] Up Kafka build to Java 11",
+        "UpdatedAt": "2021-07-07T00:39:37.000Z"
       }
     },
     {
       "CodeChangeRequest": {
         "Activities": null,
-        "CodeChangeRequestId": "I600dc68c6f38597fedfd0e8d962fe879a6abb976",
-        "CreatedAt": "2021-06-23T15:02:46.000Z",
+        "ClosedAt": "2021-07-02T11:37:28.000Z",
+        "CodeChangeRequestId": "I19d41fd1c8718d5b7e82f361d398c1ebe2545401",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-02T09:26:30.000Z",
         "DataSourceId": "gerrit",
-        "Id": "276951a0362f05f7d55f00bc80051b34a9e57d9e",
-        "UpdatedAt": "2021-07-31T03:33:07.000Z"
+        "Id": "c19f97c639f7c0e5774970f37937d7807aeb354c",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-02T11:37:28.000Z",
+        "State": "MERGED",
+        "Title": "[OOM-CERT-SERVICE] Fix EJBCA \"CA with name - does not exist\" error",
+        "UpdatedAt": "2021-07-02T11:37:28.000Z"
       }
     },
     {
       "CodeChangeRequest": {
         "Activities": null,
-        "CodeChangeRequestId": "Ie14a744246f26a9036066b9f4064bca0c23290be",
-        "CreatedAt": "2021-07-26T16:08:02.000Z",
+        "ClosedAt": "2021-07-07T15:39:36.000Z",
+        "CodeChangeRequestId": "I33101d24b1a5719c991b6a12b50357b4e3fa4d6a",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-06-20T02:11:07.000Z",
         "DataSourceId": "gerrit",
-        "Id": "383ffc0df00e20581f79473461396af7991ed4f9",
-        "UpdatedAt": "2021-07-29T13:55:43.000Z"
+        "Id": "bbd76a3281217b94d4cbd97a8faa6b536221032c",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-07T15:39:36.000Z",
+        "State": "MERGED",
+        "Title": "Releasing 1.1.6 artifacts and rolling to next snapshot",
+        "UpdatedAt": "2021-07-07T15:39:36.000Z"
       }
     },
     {
       "CodeChangeRequest": {
         "Activities": null,
-        "CodeChangeRequestId": "I9dcf213015e2e5ae19bb4ca11496d5d93e6fea44",
-        "CreatedAt": "2021-07-06T11:36:35.000Z",
+        "ClosedAt": "2021-07-08T00:43:12.000Z",
+        "CodeChangeRequestId": "I1cfc367328dd9100329c654a84292d74d918ac5a",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-07T07:07:17.000Z",
         "DataSourceId": "gerrit",
-        "Id": "19c6caff12d38734d8229b6a1ba2bbb26252ea40",
-        "UpdatedAt": "2021-07-29T15:08:46.000Z"
+        "Id": "9cb75a98d94033931e5f4b1a31f7c1bd66675e51",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-08T00:43:12.000Z",
+        "State": "MERGED",
+        "Title": "Update project committers info",
+        "UpdatedAt": "2021-07-08T00:43:12.000Z"
       }
     },
     {
       "CodeChangeRequest": {
         "Activities": null,
-        "CodeChangeRequestId": "Ic93ad33257a091f2cd208cdf02d1d7400c256bf0",
-        "CreatedAt": "2021-07-26T07:13:55.000Z",
+        "ClosedAt": "2021-07-02T00:42:45.000Z",
+        "CodeChangeRequestId": "Icf45237a6eeec35ea8a938f1630b0477f2084c56",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-01T20:29:27.000Z",
         "DataSourceId": "gerrit",
-        "Id": "99f6206babd569ea0000485bef7c6906d0c0a349",
-        "UpdatedAt": "2021-07-30T02:23:29.000Z"
+        "Id": "bc3efafe4a4c19b1119431b46089be3b0f08b94b",
+        "IsClosed": true,
+        "State": "ABANDONED",
+        "Title": "Wait after fetch exception on topic",
+        "UpdatedAt": "2021-07-02T00:42:45.000Z"
       }
     },
     {
       "CodeChangeRequest": {
         "Activities": null,
-        "CodeChangeRequestId": "I596e542f4719880a4359de9ea82bbb80b9d87403",
-        "CreatedAt": "2021-07-26T19:45:36.000Z",
+        "ClosedAt": "2021-07-07T07:39:25.000Z",
+        "CodeChangeRequestId": "Id947029c719ac3b6fc3456dbd1d36e83964d8729",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-06T09:39:07.000Z",
         "DataSourceId": "gerrit",
-        "Id": "46c43f3ddec6c091c4e775f7f51e1d3d8e27206a",
-        "UpdatedAt": "2021-07-30T02:43:06.000Z"
+        "Id": "9ae156d6e4fe16c6499cdfbd214a36b5e8ab1117",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-07T07:39:25.000Z",
+        "State": "MERGED",
+        "Title": "Change logback version to 1.3.0-alpha4",
+        "UpdatedAt": "2021-07-07T07:39:25.000Z"
       }
     },
     {
       "CodeChangeRequest": {
         "Activities": null,
-        "CodeChangeRequestId": "Ibfe23a6e98fb760a930b6080dc2291113b3cb4fa",
-        "CreatedAt": "2021-07-27T12:08:39.000Z",
+        "ClosedAt": "2021-07-02T07:43:22.000Z",
+        "CodeChangeRequestId": "I6ccb446d01509232bbd4230b76bd7950858e1437",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-06-30T18:50:40.000Z",
         "DataSourceId": "gerrit",
-        "Id": "f6e29d462924fff281eb21844005d02636b68249",
-        "UpdatedAt": "2021-07-30T19:40:27.000Z"
+        "Id": "b00a83863b313cccc87ba94bd5475f18eda81819",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-02T07:43:22.000Z",
+        "State": "MERGED",
+        "Title": "Restore swagger generation in CLAMP",
+        "UpdatedAt": "2021-07-02T07:43:22.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-06T12:45:11.000Z",
+        "CodeChangeRequestId": "I578101fb9d3e0171ca76dda0262240c2131ec92c",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-06-22T13:51:06.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "5e38e9df098a576a96525f84f70f1faabdcfb569",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-06T12:45:11.000Z",
+        "State": "MERGED",
+        "Title": "Remove repo2 maven repository as its decomissioned",
+        "UpdatedAt": "2021-07-06T12:45:11.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-06T13:26:48.000Z",
+        "CodeChangeRequestId": "If357232c8edb117ef66126cf51c22c79149529d9",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-05T16:13:29.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "bb42284599a1137e8d588c3fb1c01778b277d8da",
+        "IsClosed": true,
+        "State": "ABANDONED",
+        "Title": "Addition of missing license to INFO.yaml",
+        "UpdatedAt": "2021-07-06T13:26:48.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-01T21:27:16.000Z",
+        "CodeChangeRequestId": "Ie64e8462bb316f71d555e3b394d3c615b5c6c3a1",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-06-30T11:21:39.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "74c854573ff48b8c0fdcfa1eac8de2f05f4d722a",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-01T21:27:16.000Z",
+        "State": "MERGED",
+        "Title": "Remove unused property from pom",
+        "UpdatedAt": "2021-07-01T21:27:16.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-01T21:40:57.000Z",
+        "CodeChangeRequestId": "Ic45f889ab4d0ed24f6c1fc1aaece0601636e7a10",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-06-28T09:07:39.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "60229e3bb99a273ad7b3832f2352b05750c334de",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-01T21:40:57.000Z",
+        "State": "MERGED",
+        "Title": "Update policy-models for checkstyle 8.43",
+        "UpdatedAt": "2021-07-01T21:40:57.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-01T16:49:13.000Z",
+        "CodeChangeRequestId": "Ie8a9610880d518bb53c7bd2d414026a7c8af7e77",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-01T00:04:03.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "7efbc46f27f47fa98a9381c4947e0a6f2517a92e",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-01T16:49:13.000Z",
+        "State": "MERGED",
+        "Title": "Remove VOLUME definition from PH Dockerfile",
+        "UpdatedAt": "2021-07-01T16:49:13.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-05T16:15:06.000Z",
+        "CodeChangeRequestId": "I1419871577174fd986c9eebf2ce35134bd4bda93",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-02T15:58:14.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "f716440ccb57b376de089bcadefc36dc02cab9e6",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-05T16:15:06.000Z",
+        "State": "MERGED",
+        "Title": "Address some vulnerabilities from IQ report",
+        "UpdatedAt": "2021-07-05T16:15:06.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-02T09:06:08.000Z",
+        "CodeChangeRequestId": "Ic295f805b8aea6f13b95e6c972037066471a5faa",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-02T08:40:13.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "0c5dc459d5044d8ca152df4754bac673927ce079",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-02T09:06:08.000Z",
+        "State": "MERGED",
+        "Title": "[OOM-CERT-SERVICE] Fix makefile requests",
+        "UpdatedAt": "2021-07-02T09:06:08.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-02T00:15:14.000Z",
+        "CodeChangeRequestId": "I26a14fb6f0823f9836bc5b62222e4e2cb01977ae",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-06-18T17:43:30.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "3a0ab0b3da36c2959f37c416b534c3649b91d8bb",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-02T00:15:14.000Z",
+        "State": "MERGED",
+        "Title": "Fix new checkstyle issues in drools-apps",
+        "UpdatedAt": "2021-07-02T00:15:14.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-05T12:13:20.000Z",
+        "CodeChangeRequestId": "I4317ccba3eda6863ce96a6db4ef20816e59a7f2d",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-06-30T21:53:18.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "5e502eafa069654a8c6f6dd15646bf49ee005688",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-05T12:13:20.000Z",
+        "State": "MERGED",
+        "Title": "Add listener to collect PDP statistics",
+        "UpdatedAt": "2021-07-05T12:13:20.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-07T21:45:38.000Z",
+        "CodeChangeRequestId": "If522c9ff67c6986255787ae1308bcf43ebebb70b",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-02T14:55:35.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "e5df8ecd3fdc2702c37208332709c2a0693756cf",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-07T21:45:38.000Z",
+        "State": "MERGED",
+        "Title": "[DCAE] Update policy handler version",
+        "UpdatedAt": "2021-07-07T21:45:38.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-07T16:51:24.000Z",
+        "CodeChangeRequestId": "Ib20c961e9a3ac11d6592b6cc9533a88c69f192e7",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-07T14:51:41.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "a4734b70498e2d62162fbcf405be3c0195eef3ed",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-07T16:51:24.000Z",
+        "State": "MERGED",
+        "Title": "Copying wait-for script to fix bpmn-infra container for CSIT",
+        "UpdatedAt": "2021-07-07T16:51:24.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-05T15:44:38.000Z",
+        "CodeChangeRequestId": "I7430deaa5993e67293e0f290700274dc2fff2db1",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-02-17T19:47:11.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "b4cec8805a05a7617e793e5a29fcba9ff9c15d62",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-05T15:44:38.000Z",
+        "State": "MERGED",
+        "Title": "Remove usage of outdated library JMockit (openecomp-be)",
+        "UpdatedAt": "2021-07-05T15:44:38.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-07T07:37:25.000Z",
+        "CodeChangeRequestId": "I7b2f83dff5f7894b3064461b523bd94a77cac1f3",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-05T10:29:20.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "d84f39f8e472bd3f007ac23bc8de5b6bcdc240aa",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-07T07:37:25.000Z",
+        "State": "MERGED",
+        "Title": "[OOM-K8S-CERT-EXTERNAL-PROVIDER] Format golang code",
+        "UpdatedAt": "2021-07-07T07:37:25.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-02T16:54:57.000Z",
+        "CodeChangeRequestId": "If74440bdb01525bc463a28e5b8a9a2eca89a855a",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-01T14:23:34.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "7aa786f7dff88e3b81c6bfecac310fcdaad4c841",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-02T16:54:57.000Z",
+        "State": "MERGED",
+        "Title": "Use UUID for topic consumer instance",
+        "UpdatedAt": "2021-07-02T16:54:57.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-05T12:08:57.000Z",
+        "CodeChangeRequestId": "Ic51aabe0d500c984ec726ef39e9c4ef5f9123473",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-02T12:38:58.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "eb35eae018696b90910d0346d543a7f29a9434d8",
+        "IsClosed": true,
+        "State": "ABANDONED",
+        "Title": "CR implementation",
+        "UpdatedAt": "2021-07-05T12:08:57.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-02T06:22:42.000Z",
+        "CodeChangeRequestId": "I497312e301b860580b41a681a3c3bb20885869db",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-02T01:26:29.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "3a89fd9199511c3443b961296396db0f18b64e06",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-02T06:22:42.000Z",
+        "State": "MERGED",
+        "Title": "Release policy handler 5.1.3",
+        "UpdatedAt": "2021-07-02T06:22:42.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-05T07:22:39.000Z",
+        "CodeChangeRequestId": "If452c24fa6b8d1ae47d9c612b1d7007312acbd47",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-02T12:14:51.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "3e359a9f0fa550071d7a8c5cac65fe9a14d32f84",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-05T07:22:39.000Z",
+        "State": "MERGED",
+        "Title": "ODLUX Encoding issues and Missing log output",
+        "UpdatedAt": "2021-07-05T07:22:39.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-02T16:54:32.000Z",
+        "CodeChangeRequestId": "I532a89b3e29884cf19f3a070d725280d9d10b637",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-01T19:49:03.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "2bbd79294fff57821c993d1498ab34850cfc9af5",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-02T16:54:32.000Z",
+        "State": "MERGED",
+        "Title": "Add POLICY-STATISTICS topic to CSITs",
+        "UpdatedAt": "2021-07-02T16:54:32.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-07T21:16:43.000Z",
+        "CodeChangeRequestId": "Idcf66d78f516898f568d4c3014d10c37a4702380",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-07T05:24:08.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "4830dc6d1b1cb6e4d32eeac5d21d9f95e26108bb",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-07T21:16:43.000Z",
+        "State": "MERGED",
+        "Title": "migrate odl to silicon-sr1",
+        "UpdatedAt": "2021-07-07T21:16:43.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-07T14:57:30.000Z",
+        "CodeChangeRequestId": "I68e803fcfa14c0676b1ce190a291d8adec8ddd92",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-06-08T21:34:29.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "c8600e6bf0a1f57f7624d365979ed8cbf65d1b5c",
+        "IsClosed": true,
+        "State": "ABANDONED",
+        "Title": "PoC to improve performance of tosca models",
+        "UpdatedAt": "2021-07-07T14:57:30.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-07T19:40:22.000Z",
+        "CodeChangeRequestId": "Ifd7abee6380c82bdde38b2476b977a91d3cbcf7f",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-02T19:52:06.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "93f5b97ac4989d08194dc1e77e892ed7d122c4fd",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-07T19:40:22.000Z",
+        "State": "MERGED",
+        "Title": "Allow env variables to be used in MSO adaptor",
+        "UpdatedAt": "2021-07-07T19:40:22.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-02T15:16:00.000Z",
+        "CodeChangeRequestId": "Ifd7abee6380c82bdde38b2476b977a91d3cbcf7f",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-02T13:51:14.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "453955c3cdaa4151c1355270f7dd2662a9d347a5",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-02T15:16:00.000Z",
+        "State": "MERGED",
+        "Title": "Allow env variables to be used in MSO adaptor",
+        "UpdatedAt": "2021-07-02T15:16:00.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-05T07:56:50.000Z",
+        "CodeChangeRequestId": "I3f3911222f0e34ad3c7687d7a1e1aad218448303",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-01T15:27:37.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "b97bd11703d9a480e33464dee2b314cdaa56b8cf",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-05T07:56:50.000Z",
+        "State": "MERGED",
+        "Title": "Fix Sonar Issues in apex examples-adaptive",
+        "UpdatedAt": "2021-07-05T07:56:50.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-07T13:07:26.000Z",
+        "CodeChangeRequestId": "I7d18f04f1b2e6d058664284ea2ae6820808df8c8",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-06-30T12:48:41.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "3dfed2b91fc9ff0fdf684583a14adebd46baece2",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-07T13:07:26.000Z",
+        "State": "MERGED",
+        "Title": "[MULTICLOUD] Exclude  multicloud healthcheck tests",
+        "UpdatedAt": "2021-07-07T13:07:26.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-07T16:35:58.000Z",
+        "CodeChangeRequestId": "I061324c5217395cd765dfbfc1d379531ce59f97a",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-07T14:25:23.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "af827bf19d7ffd394e3daed5e74c23286fb112f6",
+        "IsClosed": true,
+        "State": "ABANDONED",
+        "Title": "Revert \"Add VNF-Macro-Create and VNF-Macro-Delete\"",
+        "UpdatedAt": "2021-07-07T16:35:58.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-01T21:30:53.000Z",
+        "CodeChangeRequestId": "Iff5881df45ef54b20fa30f63e2393cc1cdbf4bfe",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-06-29T16:46:07.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "71aa92fbde2215bbd272aaa9ef568e43e6c530d1",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-01T21:30:53.000Z",
+        "State": "MERGED",
+        "Title": "Update CLAMP: checkstyle 8.43/Spring dependencies",
+        "UpdatedAt": "2021-07-01T21:30:53.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-05T09:05:32.000Z",
+        "CodeChangeRequestId": "Ib53c48f2c549f6ddb3adb3c12e15a9167a41673d",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-02T03:34:14.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "f25d340b0767dfe1eed697dd33144c5c4bd54783",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-05T09:05:32.000Z",
+        "State": "MERGED",
+        "Title": "Review docker compose",
+        "UpdatedAt": "2021-07-05T09:05:32.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-07T18:29:18.000Z",
+        "CodeChangeRequestId": "If6643112ddda95d0a6f105a329fcbc3b7e26ad64",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-06T20:07:29.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "0cf890adb83e748042e560cc3c04fa83cd058868",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-07T18:29:18.000Z",
+        "State": "MERGED",
+        "Title": "Skip collection of swagger libraries",
+        "UpdatedAt": "2021-07-07T18:29:18.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-07T15:49:55.000Z",
+        "CodeChangeRequestId": "Id39fa218b5d56f2350133dac8df38f75e6d42638",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-05T14:37:08.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "7476be5019f511e3d183ba17800ceb0f52a4b6e7",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-07T15:49:55.000Z",
+        "State": "MERGED",
+        "Title": "Addition of missing licenses to files",
+        "UpdatedAt": "2021-07-07T15:49:55.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-06T18:33:53.000Z",
+        "CodeChangeRequestId": "I2d69ac09588d4fcc67e6a791bce992da4070e2e9",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-06T15:53:19.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "efc4d528b3c6c54cd44497c748e79000f3888b2d",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-06T18:33:53.000Z",
+        "State": "MERGED",
+        "Title": "[DMAAP-CLIENT] Add hk2 dependency",
+        "UpdatedAt": "2021-07-06T18:33:53.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-01T18:28:00.000Z",
+        "CodeChangeRequestId": "Iba2484f6be7fc54e412f7de302bb79a4d7bfde17",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-06-22T21:14:33.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "d25c377ab8cd6c3d89acd65bf35702ef3708c0e7",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-01T18:28:00.000Z",
+        "State": "MERGED",
+        "Title": "support local config and policy files",
+        "UpdatedAt": "2021-07-01T18:28:00.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-01T14:13:09.000Z",
+        "CodeChangeRequestId": "Ie9099331b809620e1f615994408ff4fa166344a8",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-01T11:34:57.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "f5f052cfdd74856c9fd75b584b2829df0abae88d",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-01T14:13:09.000Z",
+        "State": "MERGED",
+        "Title": "Removing commented out code",
+        "UpdatedAt": "2021-07-01T14:13:09.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-01T12:01:59.000Z",
+        "CodeChangeRequestId": "Icac20cf1f00ac016a26a8ab1677da21f2d33e84a",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-01T05:04:15.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "4420abc7fc73afc1ad8ad1a589e69ffa2abd8436",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-01T12:01:59.000Z",
+        "State": "MERGED",
+        "Title": "Refactoring for bpmn-infra",
+        "UpdatedAt": "2021-07-01T12:01:59.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-01T09:06:15.000Z",
+        "CodeChangeRequestId": "I6d3a056ede03e5af5248ee925fc5e1bd13f4d6c4",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-06-29T11:20:31.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "2689cfbeaa2091b5f1768b8bf75637907cf60f5b",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-01T09:06:15.000Z",
+        "State": "MERGED",
+        "Title": "Fixed the UT problem",
+        "UpdatedAt": "2021-07-01T09:06:15.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-07T11:24:56.000Z",
+        "CodeChangeRequestId": "Iff6bb1332b0aba08ee0d1a691e44762f2539d809",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-06-29T11:50:53.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "ddd7287625f33df393db40b47563383db16b6b97",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-07T11:24:56.000Z",
+        "State": "MERGED",
+        "Title": "[OOF] Fix AAI schema version from v19 to v21",
+        "UpdatedAt": "2021-07-07T11:24:56.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-07T11:56:27.000Z",
+        "CodeChangeRequestId": "Ie81a9c3d263db969a8c14597910f75724c244952",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-06T13:21:26.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "342cae31d0326bac06f4ee26a91d933abbfe44ff",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-07T11:56:27.000Z",
+        "State": "MERGED",
+        "Title": "Replace POLICY-STATISTICS with POLICY-HEARTBEAT",
+        "UpdatedAt": "2021-07-07T11:56:27.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-02T15:56:06.000Z",
+        "CodeChangeRequestId": "I3f2b02f82b7efaa73630edf0d18f60918f836f1b",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-06-30T00:12:49.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "a5b87afc338b6a5c04169fa3cee95fa4d4580c7c",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-02T15:56:06.000Z",
+        "State": "MERGED",
+        "Title": "Moving CCSDK/Features and ORAN Features from CCSDK/distribution",
+        "UpdatedAt": "2021-07-02T15:56:06.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-06T16:20:43.000Z",
+        "CodeChangeRequestId": "I4221d8c6ecff3b529e7cd65f467bcf9bd3ac758d",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-05T21:42:47.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "b8dca083d3269c5818ae90c068eca8ec9e78fd76",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-06T16:20:43.000Z",
+        "State": "MERGED",
+        "Title": "Use lombok in policy/distribution",
+        "UpdatedAt": "2021-07-06T16:20:43.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-01T15:24:28.000Z",
+        "CodeChangeRequestId": "Iea381caf4a9245e6dc65d9d322dd016a2df50a46",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-06-30T00:03:51.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "711f0c9d0942120dd0a0d97369db7ec868485876",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-01T15:24:28.000Z",
+        "State": "MERGED",
+        "Title": "Moving CCSDK/Features and ORAN Features to SDNC OAM",
+        "UpdatedAt": "2021-07-01T15:24:28.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-02T09:11:50.000Z",
+        "CodeChangeRequestId": "Ib07a694c6a88d5ad58059cd331d2eddbcaf8a97b",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-06-25T14:05:02.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "16fbfef808b74d9fd63a47e8176d1d8e3cf528ad",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-02T09:11:50.000Z",
+        "State": "MERGED",
+        "Title": "[OOM-CERT-SERVICE] Add Certificate Update Admin role",
+        "UpdatedAt": "2021-07-02T09:11:50.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-07T18:25:13.000Z",
+        "CodeChangeRequestId": "Ieae80c77db297271c9de3958d321bfe4b88acce3",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-07T12:38:17.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "81d7ba2d47bf59db61a07c214b50e4e98b01a49b",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-07T18:25:13.000Z",
+        "State": "MERGED",
+        "Title": "nosonar on admin logging level function",
+        "UpdatedAt": "2021-07-07T18:25:13.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-07T18:42:01.000Z",
+        "CodeChangeRequestId": "Ief17f400729410b83c6b7c665980d443e0cf6f28",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-01T11:12:12.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "9274078de6bd07eb4ab0e4463d9a6241400439fd",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-07T18:42:01.000Z",
+        "State": "MERGED",
+        "Title": "Cleanup input & outputFields from Task definition",
+        "UpdatedAt": "2021-07-07T18:42:01.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-01T09:47:31.000Z",
+        "CodeChangeRequestId": "Ief51c27200300118ffa0206ba2657504ce4bc69c",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-06-30T13:35:12.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "6bcf3ff07c5ae09f508ca53a6e3b5caad9240cf2",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-01T09:47:31.000Z",
+        "State": "MERGED",
+        "Title": "[OOM-CERT-SERVICE] Modify EJBCA configuration",
+        "UpdatedAt": "2021-07-01T09:47:31.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-01T09:17:48.000Z",
+        "CodeChangeRequestId": "Ia1d0e2a9c41cbedc76db4ec0c930162455a5f29a",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-05-18T10:12:12.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "918de0a8bfd72e995f92b7cbf6bea4a9880ded29",
+        "IsClosed": true,
+        "State": "ABANDONED",
+        "Title": "Add get and delete of non-default policies",
+        "UpdatedAt": "2021-07-01T09:17:48.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-01T10:47:18.000Z",
+        "CodeChangeRequestId": "Id4a76fae417e217ad43b0bc99daf20b1b8d219db",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-06-23T12:39:45.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "1ab29dae5f2316411d24d069d8d8729d0c135e04",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-01T10:47:18.000Z",
+        "State": "MERGED",
+        "Title": "Changing ONAP logging dependencies to a released",
+        "UpdatedAt": "2021-07-01T10:47:18.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-07T08:07:09.000Z",
+        "CodeChangeRequestId": "Iaf00777e04e2f25d0e2305ed0e48091878574a1a",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-07T06:32:36.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "9ca4f9b5328a38b7dd1c3c31f6551e091a920d8f",
+        "IsClosed": true,
+        "State": "ABANDONED",
+        "Title": "WIP - DO NOT MERGE",
+        "UpdatedAt": "2021-07-07T08:07:09.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-02T00:23:20.000Z",
+        "CodeChangeRequestId": "Id88ca402704106404f529e595e1a76f6bf167876",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-06-22T15:16:58.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "2951929e1c34f8e2061b038fbb164ad46a6707e4",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-02T00:23:20.000Z",
+        "State": "MERGED",
+        "Title": "Changes to support multiple outputs from a state",
+        "UpdatedAt": "2021-07-02T00:23:20.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-07T18:25:10.000Z",
+        "CodeChangeRequestId": "Id292c1f5109f0c3846a0357d0618f607011825a4",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-07T17:54:09.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "476d3d6c63af42261d5b0119d29349ffa7119f80",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-07T18:25:10.000Z",
+        "State": "MERGED",
+        "Title": "missing logs",
+        "UpdatedAt": "2021-07-07T18:25:10.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-07T15:27:29.000Z",
+        "CodeChangeRequestId": "Ifdb668bfca3f52476a73a6a88aff2bc501438078",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-07T05:28:22.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "fefce980d2806401d8eb6b0cc9208c4545fd6139",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-07T15:27:29.000Z",
+        "State": "MERGED",
+        "Title": "migrate parents to silicon-sr1",
+        "UpdatedAt": "2021-07-07T15:27:29.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-05T19:56:56.000Z",
+        "CodeChangeRequestId": "Ifca0095d84d5da4ab4b055942d893e9c6a259eb7",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-06-23T21:15:00.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "2d1694ed63cadcd241f885a219037d2b456b84fb",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-05T19:56:56.000Z",
+        "State": "MERGED",
+        "Title": "Create REST endpoint to retrieve models",
+        "UpdatedAt": "2021-07-05T19:56:56.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "CodeChangeRequestId": "Id1256446c716de646ceadd624111321de6c3d8eb",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-07T12:12:22.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "001b6fda26cd5745247db730a6c60c2da7c256c9",
+        "State": "NEW",
+        "Title": "[GLOBAL] Bump version for Istanbul",
+        "UpdatedAt": "2021-07-07T17:25:00.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-06T18:49:42.000Z",
+        "CodeChangeRequestId": "I1b2185781e187526bae114ad718c4758d373cee5",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-06-24T10:46:17.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "9b28413a3502c857554461fe3ec3c86128efbcc7",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-06T18:49:42.000Z",
+        "State": "MERGED",
+        "Title": "Remove unwanted components from image",
+        "UpdatedAt": "2021-07-06T18:49:42.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-01T09:40:15.000Z",
+        "CodeChangeRequestId": "I38de28c994b5c83f936b3b5ea47d024a96f4733e",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-06-29T09:54:50.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "b302a7a072a0fc7366dea4b62759550fb16bb4c5",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-01T09:40:15.000Z",
+        "State": "MERGED",
+        "Title": "[OOM-CERT-SERVICE] Add handling cmp response when PBM value is missing.",
+        "UpdatedAt": "2021-07-01T09:40:15.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-06T15:53:17.000Z",
+        "CodeChangeRequestId": "I83a3976ee2513ab24d97b1594a29bf0a80f62d4c",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-06T08:50:54.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "df0e185ddc91f44ce7f98e1e0d8d6b1b325987a0",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-06T15:53:17.000Z",
+        "State": "MERGED",
+        "Title": "Add swagger models for swagger endpoint generation",
+        "UpdatedAt": "2021-07-06T15:53:17.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-06T09:04:54.000Z",
+        "CodeChangeRequestId": "I00c7866ae598b9768d1616468a4c9bfe4cc76166",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-01T11:54:45.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "55a44be9a8af7f4d9991c0baccbb701e43b957db",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-06T09:04:54.000Z",
+        "State": "MERGED",
+        "Title": "Add Junits for kubernetes participant module",
+        "UpdatedAt": "2021-07-06T09:04:54.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-07T07:30:55.000Z",
+        "CodeChangeRequestId": "I14442bd50fafa0692008ea0c411c0f535f4fffc3",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-07T07:09:25.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "8fa3dffc0874ba753d823374d47de8e7b116c5db",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-07T07:30:55.000Z",
+        "State": "MERGED",
+        "Title": "Update project committers info",
+        "UpdatedAt": "2021-07-07T07:30:55.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-07T08:16:57.000Z",
+        "CodeChangeRequestId": "Ie7416143179b27b64f17088f1983f4477c259cc4",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-06-28T09:15:26.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "ce58cef52fa630c6a7a3f1e417f13944ff0b47e8",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-07T08:16:57.000Z",
+        "State": "MERGED",
+        "Title": "ONAP Service Mesh compliant modification",
+        "UpdatedAt": "2021-07-07T08:16:57.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-06T12:15:31.000Z",
+        "CodeChangeRequestId": "I0fd4702ba52bb4f4a2b5f8e6d6b820551cc6de17",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-06-16T10:36:13.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "0001554354e2cd8d1825537c9517e4684af7ec94",
+        "IsClosed": true,
+        "State": "ABANDONED",
+        "Title": "Create Drools DB migration script for the existing policy database",
+        "UpdatedAt": "2021-07-06T12:15:31.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-02T16:48:00.000Z",
+        "CodeChangeRequestId": "I88e360fb1d31197b46f4959e5ea0ea2d741ad25c",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-02T00:44:42.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "ae964699d066b9b8b080ad1ef62145af5415e83b",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-02T16:48:00.000Z",
+        "State": "MERGED",
+        "Title": "Wait after fetch exception on topic",
+        "UpdatedAt": "2021-07-02T16:48:00.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-07T18:16:08.000Z",
+        "CodeChangeRequestId": "I41e2668bdebd732149db0ccbe160b67b9952a8d9",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-06T13:02:06.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "3a08263057113a723ac2fe70ba26b216edbef7cf",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-07T18:16:08.000Z",
+        "State": "MERGED",
+        "Title": "Update pdp statistics to count deploy/undeploy separately.",
+        "UpdatedAt": "2021-07-07T18:16:08.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-06T13:59:03.000Z",
+        "CodeChangeRequestId": "I364294a46b1ab78b86a9c271856805fce09f75a0",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-06-22T16:01:53.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "a80a014312a2a5be9b670fda5132914ee7d30fc3",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-06T13:59:03.000Z",
+        "State": "MERGED",
+        "Title": "Adding Layered Architecture test and Arch Unit Library for CPS-CORE",
+        "UpdatedAt": "2021-07-06T13:59:03.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-07T14:25:23.000Z",
+        "CodeChangeRequestId": "I16975f3561f2d978dede20679927ac3531def900",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-05-05T20:12:01.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "1b6f6ce5e719cf226d7b46e68454ab50af4256d3",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-07T14:25:23.000Z",
+        "State": "MERGED",
+        "Title": "Add VNF-Macro-Create and VNF-Macro-Delete",
+        "UpdatedAt": "2021-07-07T14:25:23.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-07T08:02:15.000Z",
+        "CodeChangeRequestId": "I03e8f7dae37ec4845bbcde446f4d9fd205bfba72",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2020-11-29T21:07:06.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "8effb179cff6c5cb62289c7c5f655d63c4a549ec",
+        "IsClosed": true,
+        "State": "ABANDONED",
+        "Title": "WIP Include navigation capabilities",
+        "UpdatedAt": "2021-07-07T08:02:15.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-07T07:06:51.000Z",
+        "CodeChangeRequestId": "I6a85f64aa55575b3300faaed143776349d6a0340",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-07T06:47:40.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "ea47799fdfffd8c52d59ac28cbf6a009559c41eb",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-07T07:06:51.000Z",
+        "State": "MERGED",
+        "Title": "Update project committers info",
+        "UpdatedAt": "2021-07-07T07:06:51.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-07T14:57:16.000Z",
+        "CodeChangeRequestId": "Ibc302b64a0e410dcc3af7c35a9a736a165107919",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-06-01T22:32:37.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "a856da4845c2c834ecf800c8d7c1668d4474fba6",
+        "IsClosed": true,
+        "State": "ABANDONED",
+        "Title": "Improve models performance",
+        "UpdatedAt": "2021-07-07T14:57:16.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-07T12:14:29.000Z",
+        "CodeChangeRequestId": "I70d48750250eecd651b845ef0c726617983f75f5",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-05T11:39:39.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "821a323cfd41279df17270c95f4770231e6b8d6e",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-07T12:14:29.000Z",
+        "State": "MERGED",
+        "Title": "Changed components to be service-centric",
+        "UpdatedAt": "2021-07-07T12:14:29.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-06T15:50:02.000Z",
+        "CodeChangeRequestId": "I5efb8ee996b06dc7f57107b8f77408adc1a4f22f",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-02T10:26:57.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "6b00f1e60208292df68b128aa80a31798954f8a9",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-06T15:50:02.000Z",
+        "State": "MERGED",
+        "Title": "Convert clamp-models unit tests to JUnit 5",
+        "UpdatedAt": "2021-07-06T15:50:02.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-07T15:58:53.000Z",
+        "CodeChangeRequestId": "I12e0bb7e01d426928e3184fcd49f461f775a369a",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-06T10:58:44.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "e2a5884c1dd9399233e592dc31c6794663467281",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-07T15:58:53.000Z",
+        "State": "MERGED",
+        "Title": "Update React NPM dependencies",
+        "UpdatedAt": "2021-07-07T15:58:53.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-06T10:47:15.000Z",
+        "CodeChangeRequestId": "I25fd91936e1b08cfc3bff69c7169392e724ed156",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-06T03:31:18.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "7a23803828dbf9c8be64873d13a48f7002c4ce12",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-06T10:47:15.000Z",
+        "State": "MERGED",
+        "Title": "Added parent is null condition when searching for root fragments",
+        "UpdatedAt": "2021-07-06T10:47:15.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-01T09:59:51.000Z",
+        "CodeChangeRequestId": "I571ad3914a870dde83929cb6121c2c63a5df3ae4",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-06-30T11:31:52.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "2112fcf996367d5cb91f6838c509a3e78210e317",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-01T09:59:51.000Z",
+        "State": "MERGED",
+        "Title": "[OOM-CERT-SERVICE] Add logic for KUR/CR detection",
+        "UpdatedAt": "2021-07-01T09:59:51.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-06T16:19:13.000Z",
+        "CodeChangeRequestId": "I59f98379f7354452a1509972db51a8b837d26ef5",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-05T15:02:52.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "fb8e5a1b9fac43567f0de9387b0ce37f1b793871",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-06T16:19:13.000Z",
+        "State": "MERGED",
+        "Title": "Add savePdpStatisticsInDb flag in pap config",
+        "UpdatedAt": "2021-07-06T16:19:13.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-07T15:19:17.000Z",
+        "CodeChangeRequestId": "Icc565bdfa1a59e1c1c551f13c48348ee6a8a4e27",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-02T15:39:46.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "521125e9d492a17affa0cf7e90c1f9d7464a036f",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-07T15:19:17.000Z",
+        "State": "MERGED",
+        "Title": "Add ONAP standard Control Loop Element types",
+        "UpdatedAt": "2021-07-07T15:19:17.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-05T12:07:46.000Z",
+        "CodeChangeRequestId": "Ibcfd9be0c8ceb95d5c1c3bd3f21c3dec26c398f7",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-06-21T11:14:55.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "bdd6a6815f297c30fdb481b8449715a569727ea0",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-05T12:07:46.000Z",
+        "State": "MERGED",
+        "Title": "Refactor Substitution filters structure",
+        "UpdatedAt": "2021-07-05T12:07:46.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-05T14:51:07.000Z",
+        "CodeChangeRequestId": "Icecef30b830c38606e17fbc2c502208543d048d2",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-06-30T14:18:58.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "a953ffe5835ab88c6ef3a3e5294731f0bb3f4154",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-05T14:51:07.000Z",
+        "State": "MERGED",
+        "Title": "[OOM-CERT-SERVICE] Add Key Update Request functionality",
+        "UpdatedAt": "2021-07-05T14:51:07.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-07T12:50:12.000Z",
+        "CodeChangeRequestId": "Ia07132b1c7aef006af86fddbe677fb1243a4e2c3",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-06T14:48:13.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "e69a479f4a7ebfb724f7088dbdf74b8775875507",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-07T12:50:12.000Z",
+        "State": "MERGED",
+        "Title": "Use separate subscription for heartbeats",
+        "UpdatedAt": "2021-07-07T12:50:12.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-05T18:47:30.000Z",
+        "CodeChangeRequestId": "I3a119dba75bd59ccc730a41076803950d547ddf9",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-06-14T21:55:49.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "bb325b5fa8b4699b1f76d82a35beb2176dfb21b7",
+        "IsClosed": true,
+        "State": "ABANDONED",
+        "Title": "AAI schema changes -- cloud lease line",
+        "UpdatedAt": "2021-07-05T18:47:30.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-05T13:55:45.000Z",
+        "CodeChangeRequestId": "I3888fb6f9a4c89aefc3dcb124529abd726c400d9",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-06-24T11:03:27.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "984adf1bf40b6aa812ee2716df1755c14dc39c7f",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-05T13:55:45.000Z",
+        "State": "MERGED",
+        "Title": "Remove usage of outdated library JMockit (catalog-model)",
+        "UpdatedAt": "2021-07-05T13:55:45.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-07T12:38:10.000Z",
+        "CodeChangeRequestId": "I884e091817e88309330139a01d060e286bd42008",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-06T20:25:29.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "f7c508c68e8ff1f046538ce50b9316de282a5fe7",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-07T12:38:10.000Z",
+        "State": "MERGED",
+        "Title": "Fix NPE in UpdateReq.reconfigure()",
+        "UpdatedAt": "2021-07-07T12:38:10.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-06T15:58:22.000Z",
+        "CodeChangeRequestId": "I71580f877dae86a058ee881bc10f7bd1f57ff338",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-05T12:13:20.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "2cf7cddddad15e343014ecc980bd16a3dcfc0fd6",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-06T15:58:22.000Z",
+        "State": "MERGED",
+        "Title": "Revert \"Add listener to collect PDP statistics\"",
+        "UpdatedAt": "2021-07-06T15:58:22.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-01T16:51:56.000Z",
+        "CodeChangeRequestId": "I540c1b0b26e6317a374f3397c9eba01fd3ec3600",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-06-17T14:20:30.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "02d77a2402bdda6bb19ab345299a8df6aa3a692b",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-01T16:51:56.000Z",
+        "State": "MERGED",
+        "Title": "[OOF] Deprecate OOF-CMSO",
+        "UpdatedAt": "2021-07-01T16:51:56.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-05T10:27:24.000Z",
+        "CodeChangeRequestId": "I01690c4cb44d3df590987bb340e8fbb58fe960e0",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-06-18T15:52:09.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "7e37b55765b2513bbd14b2993ac99f8742ee87d5",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-05T10:27:24.000Z",
+        "State": "MERGED",
+        "Title": "External license as \"toggleable feature\"",
+        "UpdatedAt": "2021-07-05T10:27:24.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-07T12:49:41.000Z",
+        "CodeChangeRequestId": "Icd1fcd3e27c3ec632ee07c2ae1bdb2126342cf16",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-06T09:08:45.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "e928a92ca6420c661490f5cb7b6a3ea80c5a0b7e",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-07T12:49:41.000Z",
+        "State": "MERGED",
+        "Title": "Fixed failing camel endpoint test",
+        "UpdatedAt": "2021-07-07T12:49:41.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "CodeChangeRequestId": "I9b05039ddd08e0dffcf94fe628c6f4fc5eb7593a",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-06-15T18:14:17.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "4768aeab8c1d847a9e082d637af8a91d6eb0f25a",
+        "State": "NEW",
+        "Title": "[CDS] Use the common mariadb-galera",
+        "UpdatedAt": "2021-07-04T13:46:41.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-05T12:10:22.000Z",
+        "CodeChangeRequestId": "I81471f82cff6efac5a59612d3f6af0513022806f",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-01T18:28:23.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "2f68eeef8a7bcee2535c83183de1ce4403849361",
+        "IsClosed": true,
+        "State": "ABANDONED",
+        "Title": "Collect PDP stats via a separate subscription",
+        "UpdatedAt": "2021-07-05T12:10:22.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-05T18:17:42.000Z",
+        "CodeChangeRequestId": "I6b46049b71eafbfedfd3d40c68c743efff13ef54",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-06-24T11:03:01.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "2de62c74d5c98eaedf9627df78a4d0a71b1a98a4",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-05T18:17:42.000Z",
+        "State": "MERGED",
+        "Title": "Reduce usage of outdated library JMockit (catalog-dao)",
+        "UpdatedAt": "2021-07-05T18:17:42.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-07T10:09:01.000Z",
+        "CodeChangeRequestId": "Id8702dd45254f0e82d9b71e5e69372569e523838",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-07-05T12:09:14.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "25530adebd35c9846747d17262c00d47f6667b11",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-07T10:09:01.000Z",
+        "State": "MERGED",
+        "Title": "[OOM-CERT-SERVICE] Add Certification Request functionality",
+        "UpdatedAt": "2021-07-07T10:09:01.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-07T16:42:22.000Z",
+        "CodeChangeRequestId": "Id3abfa32fb04e07102a5f28e6e43a9b533391188",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-06-04T11:50:26.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "d69c0a05610ae8d67a11d9c2ac3adaab4834d98c",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-07T16:42:22.000Z",
+        "State": "MERGED",
+        "Title": "Add kafka listener for data updated events",
+        "UpdatedAt": "2021-07-07T16:42:22.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-05T16:33:53.000Z",
+        "CodeChangeRequestId": "I2c4b6e7bbc388d24259695ce1a34989faabc9751",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-06-16T11:58:21.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "b2b035ba6c162a3677b989bf0d6b4de2b12b0137",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-05T16:33:53.000Z",
+        "State": "MERGED",
+        "Title": "Update NODE/NPM versions",
+        "UpdatedAt": "2021-07-05T16:33:53.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-05T09:55:04.000Z",
+        "CodeChangeRequestId": "I5810913c4418e7893f3ad848618deec1b1a85a0f",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-06-29T12:40:41.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "0550690f05c3f94ca453d50a6d7a01b45d0740d4",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-05T09:55:04.000Z",
+        "State": "MERGED",
+        "Title": "Added ITs for Commissioning Camel Endpoints",
+        "UpdatedAt": "2021-07-05T09:55:04.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-01T11:48:35.000Z",
+        "CodeChangeRequestId": "Idbc15f15c87a3588a8b48b6c187537437986e63c",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-06-08T06:21:30.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "9ccbe2048cfba2188f885982ae73c7ef8360b379",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-01T11:48:35.000Z",
+        "State": "MERGED",
+        "Title": "[DCAEGEN2] Migrate KPI MS to Helm",
+        "UpdatedAt": "2021-07-01T11:48:35.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-07T16:35:19.000Z",
+        "CodeChangeRequestId": "I127b5c4c89850eb5e9b93bbbd1a84f2f096c6b83",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-05-22T01:55:22.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "9d923f575c1400e11e8cc4e447c9f4ffcf7eeccd",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-07T16:35:19.000Z",
+        "State": "MERGED",
+        "Title": "[DCAE] Heartbeat MS charts",
+        "UpdatedAt": "2021-07-07T16:35:19.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "ClosedAt": "2021-07-01T06:42:10.000Z",
+        "CodeChangeRequestId": "I303f8d5f56632289d8dfd2f2ba8c35819a4f871c",
+        "CodeChangeRequestNumber": "0",
+        "CreatedAt": "2021-05-04T15:54:59.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "5e540fd7b5cc3d51ce294de5b2bb87d57d3a03f8",
+        "IsClosed": true,
+        "IsMerged": true,
+        "MergedAt": "2021-07-01T06:42:10.000Z",
+        "State": "MERGED",
+        "Title": "[COMMON] Apply changes for mariadb-init project",
+        "UpdatedAt": "2021-07-01T06:42:10.000Z"
       }
     }
   ],

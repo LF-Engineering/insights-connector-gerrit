@@ -631,7 +631,6 @@ func (j *DSGerrit) EnrichItem(ctx *shared.Ctx, item map[string]interface{}) (ric
 		rich[field] = v
 	}
 	iUpdatedOn, _ := shared.Dig(item, []string{"metadata__updated_on"}, true, false)
-	rich["closed"] = iUpdatedOn
 	var updatedOn time.Time
 	updatedOn, err = shared.TimeParseInterfaceString(iUpdatedOn)
 	if err != nil {
@@ -722,8 +721,12 @@ func (j *DSGerrit) EnrichItem(ctx *shared.Ctx, item map[string]interface{}) (ric
 		lastUpdatedOn, _ = iLastUpdatedOn.(time.Time)
 	}
 	rich["last_updated"] = lastUpdatedOn
-	if reviewStatus == "MERGED" || reviewStatus == "ABANDONED" {
+	if reviewStatus == "MERGED" {
 		rich["timeopen"] = float64(lastUpdatedOn.Sub(createdOn).Seconds()) / 86400.0
+		rich["closed"] = updatedOn
+		rich["merged"] = updatedOn
+	} else if reviewStatus == "ABANDONED" {
+		rich["closed"] = updatedOn
 	} else {
 		rich["timeopen"] = float64(time.Now().Sub(createdOn).Seconds()) / 86400.0
 	}
@@ -1004,27 +1007,47 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data *mode
 	}
 	source := data.DataSource.Slug
 	for _, iDoc := range docs {
+		var (
+			pClosedOn *strfmt.DateTime
+			pMergedOn *strfmt.DateTime
+		)
 		doc, _ := iDoc.(map[string]interface{})
 		docUUID, _ := doc["uuid"].(string)
 		csetHash, _ := doc["githash"].(string)
+		csetSummary, _ := doc["summary"].(string)
+		csetStatus, _ := doc["status"].(string)
+		csetNumber32, _ := doc["changeset_number"].(int)
+		csetNumber := int64(csetNumber32)
+		sCsetNumber := fmt.Sprintf("%d", csetNumber)
 		createdOn, _ := doc["opened"].(time.Time)
 		updatedOn, _ := doc["metadata__updated_on"].(time.Time)
+		closedOn, closedOK := doc["closed"].(time.Time)
+		if closedOK {
+			tClosedOn := strfmt.DateTime(closedOn)
+			pClosedOn = &tClosedOn
+		}
+		mergedOn, mergedOK := doc["merged"].(time.Time)
+		if mergedOK {
+			tMergedOn := strfmt.DateTime(mergedOn)
+			pMergedOn = &tMergedOn
+		}
 		// xxx
 		// Event
 		event := &models.Event{
 			CodeChangeRequest: &models.CodeChangeRequest{
-				ID:                  docUUID,
-				DataSourceID:        source,
-				CodeChangeRequestID: csetHash,
-				CreatedAt:           strfmt.DateTime(createdOn),
-				UpdatedAt:           strfmt.DateTime(updatedOn),
+				ID:                      docUUID,
+				DataSourceID:            source,
+				CodeChangeRequestID:     csetHash,
+				CodeChangeRequestNumber: sCsetNumber,
+				CreatedAt:               strfmt.DateTime(createdOn),
+				UpdatedAt:               strfmt.DateTime(updatedOn),
+				ClosedAt:                pClosedOn,
+				IsClosed:                closedOK,
+				MergedAt:                pMergedOn,
+				IsMerged:                mergedOK,
+				Title:                   csetSummary,
+				State:                   csetStatus,
 				/*
-					ClosedAt:                closedOn,
-					IsClosed:                isClosed,
-					MergedAt:                mergedOn,
-					IsMerged:                isMerged,
-					Title:                   title,
-					State:                   state,
 					Activities:              activities,
 					Commits:                 commits,
 				*/

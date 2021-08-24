@@ -137,7 +137,11 @@ definitions:
       CodeChangeRequestId:
         type: string
         example: 1234567890abcdef
-        description: Gerrit internal changeset/review ID
+        description: Gerrit internal changeset/review ID (git hash)
+      CodeChangeRequestNumber:
+        type: string
+        example: 1234567890abcdef
+        description: Gerrit internal changeset number
       CreatedAt:
         type: string
         format: date-time
@@ -161,7 +165,7 @@ definitions:
         example: false
       State:
         type: string
-        example: open, closed, merged
+        example: NEW, MERGED, ABANDONED
       Title:
         type: string
         example: My PR title
