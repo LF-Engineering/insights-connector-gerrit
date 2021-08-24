@@ -64,6 +64,9 @@ definitions:
       SHA:
         type: string
         example: 2b20505d9d60202c6779342033d344dba0685d1b
+      Dt:
+        type: string
+        format: date-time
       Author:
         type: object
         description: committer
@@ -109,6 +112,11 @@ definitions:
         description: may be needed to reconstruct gerrit structures (this is Gerrit comment ID, patchset ID, changeset ID)
         example: "150"
         x-nullable: true
+      CommitSHA:
+        type: string
+        x-nullable: true
+        example: 2b20505d9d60202c6779342033d344dba0685d1b
+        description: if activity type is an approval (can be rejecting), then we have a commit SHA
       State:
         type: integer
         x-nullable: true

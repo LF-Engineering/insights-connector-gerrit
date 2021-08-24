@@ -809,7 +809,7 @@ func (j *DSGerrit) EnrichApprovals(ctx *shared.Ctx, review, patchSet map[string]
 		}
 		rich["approval_description"] = desc
 		rich["type"] = "approval"
-		rich["id"] = patchSetID + "_approval_" + fmt.Sprintf("%d.0", created.Unix())
+		rich["id"] = patchSetID + "_approval_" + fmt.Sprintf("%d", created.Unix())
 		rich["changeset_created_on"], _ = review["created_on"]
 		rich["metadata__updated_on"] = created
 		rich["roles"] = j.GetRoles(ctx, approval, GerritApprovalRoles, created)
@@ -988,7 +988,7 @@ func (j *DSGerrit) EnrichComments(ctx *shared.Ctx, review map[string]interface{}
 		}
 		rich["comment_message"] = message
 		rich["type"] = "comment"
-		rich["id"] = reviewID + "_comment_" + fmt.Sprintf("%d.0", created.Unix())
+		rich["id"] = reviewID + "_comment_" + fmt.Sprintf("%d", created.Unix())
 		rich["metadata__updated_on"] = created
 		rich["roles"] = j.GetRoles(ctx, comment, GerritCommentRoles, created)
 		// NOTE: From shared
@@ -1016,9 +1016,9 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data *mode
 		csetHash, _ := doc["githash"].(string)
 		csetSummary, _ := doc["summary"].(string)
 		csetStatus, _ := doc["status"].(string)
-		csetNumber32, _ := doc["changeset_number"].(int)
-		csetNumber := int64(csetNumber32)
-		sCsetNumber := fmt.Sprintf("%d", csetNumber)
+		csetNumber, _ := doc["changeset_number"].(float64)
+		sCsetNumber := fmt.Sprintf("%.0f", csetNumber)
+		csetURL, _ := doc["url"].(string)
 		createdOn, _ := doc["opened"].(time.Time)
 		updatedOn, _ := doc["metadata__updated_on"].(time.Time)
 		closedOn, closedOK := doc["closed"].(time.Time)
@@ -1031,7 +1031,45 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data *mode
 			tMergedOn := strfmt.DateTime(mergedOn)
 			pMergedOn = &tMergedOn
 		}
-		// xxx
+		activities := []*models.CodeChangeRequestActivity{}
+		roles, okRoles := doc["roles"].([]map[string]interface{})
+		if okRoles {
+			for _, role := range roles {
+				var (
+					body *string
+					url  *string
+				)
+				actType := "gerrit_changeset_created"
+				if csetSummary != "" {
+					body = &csetSummary
+				}
+				url = &csetURL
+				name, _ := role["name"].(string)
+				username, _ := role["username"].(string)
+				email, _ := role["email"].(string)
+				name, username = shared.PostprocessNameUsername(name, username, email)
+				userUUID := shared.UUIDAffs(ctx, source, email, name, username)
+				identity := &models.Identity{
+					ID:           userUUID,
+					DataSourceID: source,
+					Name:         name,
+					Username:     username,
+					Email:        email,
+				}
+				actUUID := shared.UUIDNonEmpty(ctx, docUUID, actType)
+				activities = append(activities, &models.CodeChangeRequestActivity{
+					ID:                   actUUID,
+					CodeChangeRequestKey: docUUID,
+					CodeChangeRequestID:  csetHash,
+					ActivityType:         actType,
+					Body:                 body,
+					Identity:             identity,
+					CreatedAt:            strfmt.DateTime(createdOn),
+					Key:                  &sCsetNumber,
+					URL:                  url,
+				})
+			}
+		}
 		commits := []*models.CodeChangeRequestCommit{}
 		objAry, okObj := doc["patchset_array"].([]interface{})
 		if okObj {
@@ -1041,17 +1079,20 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data *mode
 					continue
 				}
 				objType, _ := obj["type"].(string)
+				roles, okRoles := obj["roles"].([]map[string]interface{})
 				if objType == "patchset" {
 					sha, _ := obj["patchset_revision"].(string)
-					roles, okRoles := obj["roles"].([]map[string]interface{})
 					if !okRoles || sha == "" || len(roles) == 0 {
 						continue
 					}
-					fmt.Printf("sha:%s -> %+v\n", sha, roles)
+					patchsetCreatedOn, _ := obj["patchset_created_on"].(time.Time)
 					var (
 						author    *models.Identity
 						committer *models.Identity
 					)
+					if patchsetCreatedOn.After(updatedOn) {
+						updatedOn = patchsetCreatedOn
+					}
 					for _, role := range roles {
 						roleType, _ := role["role"].(string)
 						name, _ := role["name"].(string)
@@ -1076,7 +1117,77 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data *mode
 						SHA:       sha,
 						Author:    author,
 						Committer: committer,
+						Dt:        strfmt.DateTime(patchsetCreatedOn),
 					})
+				} else {
+					var (
+						reviewBody   *string
+						reviewURL    *string
+						commitID     *string
+						reviewState  *int64
+						iReviewState int64
+					)
+					actType := "gerrit_approval_added"
+					sReviewBody, _ := obj["approval_description"].(string)
+					if sReviewBody != "" {
+						reviewBody = &sReviewBody
+					}
+					sReviewURL, _ := obj["url"].(string)
+					if sReviewURL != "" {
+						reviewURL = &sReviewURL
+					}
+					sCommitID, _ := obj["patchset_revision"].(string)
+					if sCommitID != "" {
+						commitID = &sCommitID
+					}
+					sReviewState, _ := obj["approval_value"].(string)
+					if sReviewState != "" {
+						var err error
+						iReviewState, err = strconv.ParseInt(sReviewState, 10, 64)
+						if err != nil {
+							continue
+						}
+						reviewState = &iReviewState
+					}
+					reviewCreatedOn, _ := obj["approval_granted_on"].(time.Time)
+					sReviewID, _ := obj["id"].(string)
+					if reviewCreatedOn.After(updatedOn) {
+						updatedOn = reviewCreatedOn
+					}
+					isApproval := iReviewState >= 0
+					for _, role := range roles {
+						roleType, _ := role["role"].(string)
+						if roleType != "by" {
+							continue
+						}
+						name, _ := role["name"].(string)
+						username, _ := role["username"].(string)
+						email, _ := role["email"].(string)
+						name, username = shared.PostprocessNameUsername(name, username, email)
+						userUUID := shared.UUIDAffs(ctx, source, email, name, username)
+						identity := &models.Identity{
+							ID:           userUUID,
+							DataSourceID: source,
+							Name:         name,
+							Username:     username,
+							Email:        email,
+						}
+						actUUID := shared.UUIDNonEmpty(ctx, docUUID, actType, sReviewID)
+						activities = append(activities, &models.CodeChangeRequestActivity{
+							ID:                   actUUID,
+							CodeChangeRequestKey: docUUID,
+							CodeChangeRequestID:  csetHash,
+							ActivityType:         actType,
+							Identity:             identity,
+							CreatedAt:            strfmt.DateTime(reviewCreatedOn),
+							Key:                  &sReviewID,
+							Body:                 reviewBody,
+							URL:                  reviewURL,
+							CommitSHA:            commitID,
+							IsApproval:           &isApproval,
+							State:                reviewState,
+						})
+					}
 				}
 			}
 		}
@@ -1096,9 +1207,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data *mode
 				Title:                   csetSummary,
 				State:                   csetStatus,
 				Commits:                 commits,
-				/*
-					Activities:              activities,
-				*/
+				Activities:              activities,
 			},
 		}
 		data.Events = append(data.Events, event)
