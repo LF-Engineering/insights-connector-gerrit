@@ -15,6 +15,7 @@ import (
 
 	"github.com/LF-Engineering/insights-datasource-gerrit/gen/models"
 	shared "github.com/LF-Engineering/insights-datasource-shared"
+	"github.com/go-openapi/strfmt"
 	jsoniter "github.com/json-iterator/go"
 	// jsoniter "github.com/json-iterator/go"
 )
@@ -1003,19 +1004,21 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data *mode
 	}
 	source := data.DataSource.Slug
 	for _, iDoc := range docs {
-		var updatedOn time.Time
 		doc, _ := iDoc.(map[string]interface{})
 		docUUID, _ := doc["uuid"].(string)
+		csetHash, _ := doc["githash"].(string)
+		createdOn, _ := doc["opened"].(time.Time)
+		updatedOn, _ := doc["metadata__updated_on"].(time.Time)
+		// xxx
 		// Event
 		event := &models.Event{
 			CodeChangeRequest: &models.CodeChangeRequest{
-				ID:           docUUID,
-				DataSourceID: source,
+				ID:                  docUUID,
+				DataSourceID:        source,
+				CodeChangeRequestID: csetHash,
+				CreatedAt:           strfmt.DateTime(createdOn),
+				UpdatedAt:           strfmt.DateTime(updatedOn),
 				/*
-					CodeChangeRequestID:     prID,
-					CodeChangeRequestNumber: prNumber,
-					CreatedAt:               strfmt.DateTime(createdOn),
-					UpdatedAt:               strfmt.DateTime(updatedOn),
 					ClosedAt:                closedOn,
 					IsClosed:                isClosed,
 					MergedAt:                mergedOn,
@@ -1252,7 +1255,9 @@ func (j *DSGerrit) Sync(ctx *shared.Ctx) (err error) {
 	}
 	if j.SSHKeyTempPath != "" {
 		cleanup := func() {
-			shared.Printf("removing temporary SSH key %s\n", j.SSHKeyTempPath)
+			if ctx.Debug > 0 {
+				shared.Printf("removing temporary SSH key %s\n", j.SSHKeyTempPath)
+			}
 			_ = os.Remove(j.SSHKeyTempPath)
 		}
 		defer cleanup()

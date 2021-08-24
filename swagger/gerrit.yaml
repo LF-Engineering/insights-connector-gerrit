@@ -137,11 +137,7 @@ definitions:
       CodeChangeRequestId:
         type: string
         example: 1234567890abcdef
-        description: Gerrit internal PR ID
-      CodeChangeRequestNumber:
-        type: integer
-        example: 123
-        description: FIXME Gerrit internal patchset number
+        description: Gerrit internal changeset/review ID
       CreatedAt:
         type: string
         format: date-time

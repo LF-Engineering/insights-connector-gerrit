@@ -1,1 +1,214 @@
-{}
+{
+  "DataSource": {
+    "Name": "Gerrit",
+    "Slug": "gerrit"
+  },
+  "Endpoint": "gerrit.onap.org",
+  "Events": [
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "CodeChangeRequestId": "Ie2b29a28624f0f578864d3b8423a915f5e654247",
+        "CreatedAt": "2021-07-29T14:23:47.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "eb26d3a645d560deb53dbdb50940bc470377fdad",
+        "UpdatedAt": "2021-07-29T14:39:41.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "CodeChangeRequestId": "Id50ecf9fd968c58b96143d50755e31fb58d0b229",
+        "CreatedAt": "2021-07-29T15:12:27.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "666e11f535e86fa8c0eaa711bac5c31a38c423bb",
+        "UpdatedAt": "2021-07-30T16:45:28.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "CodeChangeRequestId": "I0b40ec076fceaad16e7b3699e2fcd25cb0069623",
+        "CreatedAt": "2021-07-30T13:53:26.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "f96c894a6cf19fe910f8df32471feb1bd7fbd3f5",
+        "UpdatedAt": "2021-07-30T13:56:11.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "CodeChangeRequestId": "I2b0aa4c368dee3cb6641bed33a8d3be6323b457d",
+        "CreatedAt": "2021-07-29T14:17:27.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "d592bbad14c5bce6bb780dd4c45ccc012eed158a",
+        "UpdatedAt": "2021-07-29T15:36:40.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "CodeChangeRequestId": "I794304fc88be28c192c4d16c74c73f972d5ff308",
+        "CreatedAt": "2021-07-29T12:51:43.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "169bb86e2edb6f5b00960f71072ee7cc1b5d35cc",
+        "UpdatedAt": "2021-07-30T05:30:02.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "CodeChangeRequestId": "I63de3f84b774dd95cf760e602ae1da286dadb5c6",
+        "CreatedAt": "2021-07-29T14:22:45.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "e0aee599ef1469ea5fcab6d4a8b7a4a53f5fc311",
+        "UpdatedAt": "2021-07-29T15:26:43.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "CodeChangeRequestId": "Ibd62021424c7c69467fef8af897709e89ce499a3",
+        "CreatedAt": "2021-07-20T14:09:49.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "7a490aa796bc641dcf85f7f03ebf42ecc73b169f",
+        "UpdatedAt": "2021-07-29T15:20:50.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "CodeChangeRequestId": "I5e2c2ebe5af7ee86cc213f0861516664cf4399a7",
+        "CreatedAt": "2021-07-28T22:26:31.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "2aecc9566aba407949a2a49eec1eba8cfb069f47",
+        "UpdatedAt": "2021-07-29T16:41:18.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "CodeChangeRequestId": "Iff73963e7c75016cdba158841bc4c904180eebac",
+        "CreatedAt": "2021-07-29T09:53:48.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "47ac8dfa66ff4b9b9fb40547881c5c004f83e1c5",
+        "UpdatedAt": "2021-07-30T06:48:17.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "CodeChangeRequestId": "I46a41146fb69cf99e4bfaedc4a94807b025832af",
+        "CreatedAt": "2021-07-20T07:08:35.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "37f24623cd7e364081e03a603c826bc073605399",
+        "UpdatedAt": "2021-07-29T14:23:23.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "CodeChangeRequestId": "I935898fcf1ae74dc8f162153ff2cf4744b8f2f99",
+        "CreatedAt": "2021-07-27T06:47:12.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "4aa7247962d94f0b7e33fa4c1cedb5704c8d271e",
+        "UpdatedAt": "2021-07-30T11:20:40.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "CodeChangeRequestId": "Ibe503fd109559e36d40fba90feb58dea9d1919ab",
+        "CreatedAt": "2021-07-27T21:03:27.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "b757e127e4cf982a4eba0d5d1496a3c805661487",
+        "UpdatedAt": "2021-07-29T18:24:16.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "CodeChangeRequestId": "If1e7460ef5ed86fd470396f1e2ed8cc3c8af70c4",
+        "CreatedAt": "2021-07-28T16:26:23.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "ad48b9fecbe2ca49793add5bea9ef96bbbfe346d",
+        "UpdatedAt": "2021-07-30T17:10:10.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "CodeChangeRequestId": "Id6f1a33b86369b54af70094686d3a15d4dca3b15",
+        "CreatedAt": "2021-07-26T12:12:57.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "67df9ccf633c2e4a5cd5449ff136b91a7fd4f3d0",
+        "UpdatedAt": "2021-07-29T11:02:07.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "CodeChangeRequestId": "I600dc68c6f38597fedfd0e8d962fe879a6abb976",
+        "CreatedAt": "2021-06-23T15:02:46.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "276951a0362f05f7d55f00bc80051b34a9e57d9e",
+        "UpdatedAt": "2021-07-31T03:33:07.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "CodeChangeRequestId": "Ie14a744246f26a9036066b9f4064bca0c23290be",
+        "CreatedAt": "2021-07-26T16:08:02.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "383ffc0df00e20581f79473461396af7991ed4f9",
+        "UpdatedAt": "2021-07-29T13:55:43.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "CodeChangeRequestId": "I9dcf213015e2e5ae19bb4ca11496d5d93e6fea44",
+        "CreatedAt": "2021-07-06T11:36:35.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "19c6caff12d38734d8229b6a1ba2bbb26252ea40",
+        "UpdatedAt": "2021-07-29T15:08:46.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "CodeChangeRequestId": "Ic93ad33257a091f2cd208cdf02d1d7400c256bf0",
+        "CreatedAt": "2021-07-26T07:13:55.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "99f6206babd569ea0000485bef7c6906d0c0a349",
+        "UpdatedAt": "2021-07-30T02:23:29.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "CodeChangeRequestId": "I596e542f4719880a4359de9ea82bbb80b9d87403",
+        "CreatedAt": "2021-07-26T19:45:36.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "46c43f3ddec6c091c4e775f7f51e1d3d8e27206a",
+        "UpdatedAt": "2021-07-30T02:43:06.000Z"
+      }
+    },
+    {
+      "CodeChangeRequest": {
+        "Activities": null,
+        "CodeChangeRequestId": "Ibfe23a6e98fb760a930b6080dc2291113b3cb4fa",
+        "CreatedAt": "2021-07-27T12:08:39.000Z",
+        "DataSourceId": "gerrit",
+        "Id": "f6e29d462924fff281eb21844005d02636b68249",
+        "UpdatedAt": "2021-07-30T19:40:27.000Z"
+      }
+    }
+  ],
+  "MetaData": {
+    "BackendName": "gerrit",
+    "BackendVersion": "0.1.1",
+    "Tags": null
+  }
+}
