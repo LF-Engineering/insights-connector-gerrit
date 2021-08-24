@@ -79,7 +79,7 @@ definitions:
         example: '2019-09-02 03:00:33.000000'
       ActivityType:
         type: string
-        example: FIXME unknown yet
+        example: unknown yet (gerrit_review_created, gerrit_review_commit, gerrit_review_comment_added, gerrit_review_approval_added), note that approval can be approving or rejecting, approved when state >= 0
         description: allows reconstructing relations
       Body:
         type: string
@@ -92,7 +92,7 @@ definitions:
         x-nullable: true
       Key:
         type: string
-        description: FIXME may be needed to reconstruct gerrit structures
+        description: FIXME may be needed to reconstruct gerrit structures (this is Gerrit comment ID if activity is a comment or CodeChangeRequest.Number when activity is review/patchset or Approval ID when activity is an approval)
         example: "150"
         x-nullable: true
       CommitSHA:
@@ -101,15 +101,15 @@ definitions:
         example: 2b20505d9d60202c6779342033d344dba0685d1b
         description: if activity type is a review, then we have a commit SHA
       State:
-        type: string
+        type: integer
         x-nullable: true
-        example: FIXME APPROVED, COMMENTED, CHANGES_REQUESTED
-        description: only present if activity type is a review
+        example: 1
+        description: only present if activity type is a review, >= 0 means approved
       IsApproval:
         type: boolean
         x-nullable: true
         example: true, false, null
-        description: only present if activity type is a review
+        description: only present if activity type is an approval (doesn't mean approved, you need to check state >= 0)
       Identity:
         type: object
         description: activity creator (ProjectDataSourceIdentity)
