@@ -206,12 +206,9 @@ definitions:
         type: object
         $ref: "#/definitions/MetaData"
       Endpoint:
-        type: object
-        properties:
-          URL:
-            type: string
-            description: Gerrit url
-            example: gerrit.onap.org
+        type: string
+        description: Gerrit endpoint for which data is being sent
+        example: gerrit.onap.org
       Events:
         type: array
         items:

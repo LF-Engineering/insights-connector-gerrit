@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/signal"
 	"regexp"
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/LF-Engineering/insights-datasource-gerrit/gen/models"
@@ -382,11 +384,799 @@ func (j *DSGerrit) GetGerritReviews(ctx *shared.Ctx, after, before string, after
 	return
 }
 
+// IdentityForObject - construct identity from a given object
+func (j *DSGerrit) IdentityForObject(ctx *shared.Ctx, obj map[string]interface{}) (identity [3]string) {
+	if ctx.Debug > 2 {
+		defer func() {
+			shared.Printf("%+v -> %+v\n", obj, identity)
+		}()
+	}
+	item := obj
+	data, ok := shared.Dig(item, []string{"data"}, false, true)
+	if ok {
+		mp, ok := data.(map[string]interface{})
+		if ok {
+			if ctx.Debug > 2 {
+				shared.Printf("digged in data: %+v\n", obj)
+			}
+			item = mp
+		}
+	}
+	for i, prop := range []string{"name", "username", "email"} {
+		iVal, ok := shared.Dig(item, []string{prop}, false, true)
+		if ok {
+			val, ok := iVal.(string)
+			if ok {
+				identity[i] = val
+			}
+		} else {
+			identity[i] = ""
+		}
+	}
+	return
+}
+
+// GetRoleIdentity - return identity data for a given role
+func (j *DSGerrit) GetRoleIdentity(ctx *shared.Ctx, item map[string]interface{}, role string) (identity map[string]interface{}) {
+	iRole, ok := shared.Dig(item, []string{role}, false, true)
+	if ok {
+		roleObj, ok := iRole.(map[string]interface{})
+		if ok {
+			ident := j.IdentityForObject(ctx, roleObj)
+			identity = map[string]interface{}{
+				"name":     ident[0],
+				"username": ident[1],
+				"email":    ident[2],
+				"role":     role,
+			}
+		}
+	}
+	return
+}
+
+// GetRoles - return identities for given roles
+func (j *DSGerrit) GetRoles(ctx *shared.Ctx, item map[string]interface{}, roles []string, dt time.Time) (identities []map[string]interface{}) {
+	for _, role := range roles {
+		identity := j.GetRoleIdentity(ctx, item, role)
+		if identity == nil || len(identity) == 0 {
+			continue
+		}
+		identity["dt"] = dt
+		identities = append(identities, identity)
+	}
+	return
+}
+
+// ConvertDates - convert floating point dates to datetimes
+func (j *DSGerrit) ConvertDates(ctx *shared.Ctx, review map[string]interface{}) {
+	for _, field := range []string{"timestamp", "createdOn", "lastUpdated"} {
+		idt, ok := shared.Dig(review, []string{field}, false, true)
+		if !ok {
+			continue
+		}
+		fdt, ok := idt.(float64)
+		if !ok {
+			continue
+		}
+		review[field] = time.Unix(int64(fdt), 0)
+		// Printf("converted %s: %v -> %v\n", field, idt, review[field])
+	}
+	iPatchSets, ok := shared.Dig(review, []string{"patchSets"}, false, true)
+	if ok {
+		patchSets, ok := iPatchSets.([]interface{})
+		if ok {
+			for _, iPatch := range patchSets {
+				patch, ok := iPatch.(map[string]interface{})
+				if !ok {
+					continue
+				}
+				field := "createdOn"
+				idt, ok := shared.Dig(patch, []string{field}, false, true)
+				if ok {
+					fdt, ok := idt.(float64)
+					if ok {
+						patch[field] = time.Unix(int64(fdt), 0)
+						// Printf("converted patch %s: %v -> %v\n", field, idt, patch[field])
+					}
+				}
+				iApprovals, ok := shared.Dig(patch, []string{"approvals"}, false, true)
+				if ok {
+					approvals, ok := iApprovals.([]interface{})
+					if ok {
+						for _, iApproval := range approvals {
+							approval, ok := iApproval.(map[string]interface{})
+							if !ok {
+								continue
+							}
+							field := "grantedOn"
+							idt, ok := shared.Dig(approval, []string{field}, false, true)
+							if ok {
+								fdt, ok := idt.(float64)
+								if ok {
+									approval[field] = time.Unix(int64(fdt), 0)
+									// Printf("converted patch approval %s: %v -> %v\n", field, idt, approval[field])
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	iComments, ok := shared.Dig(review, []string{"comments"}, false, true)
+	if ok {
+		comments, ok := iComments.([]interface{})
+		if ok {
+			for _, iComment := range comments {
+				comment, ok := iComment.(map[string]interface{})
+				if !ok {
+					continue
+				}
+				field := "timestamp"
+				idt, ok := shared.Dig(comment, []string{field}, false, true)
+				if ok {
+					fdt, ok := idt.(float64)
+					if ok {
+						comment[field] = time.Unix(int64(fdt), 0)
+						// Printf("converted comment %s: %v -> %v\n", field, idt, comment[field])
+					}
+				}
+			}
+		}
+	}
+}
+
+// LastChangesetApprovalValue - return last approval status
+func (j *DSGerrit) LastChangesetApprovalValue(ctx *shared.Ctx, patchSets []interface{}) (status interface{}) {
+	if ctx.Debug > 2 {
+		defer func() {
+			shared.Printf("LastChangesetApprovalValue: %+v -> %+v\n", patchSets, status)
+		}()
+	}
+	nPatchSets := len(patchSets)
+	if ctx.Debug > 2 {
+		shared.Printf("LastChangesetApprovalValue: %d patch sets\n", nPatchSets)
+	}
+	for i := nPatchSets - 1; i >= 0; i-- {
+		iPatchSet := patchSets[i]
+		patchSet, ok := iPatchSet.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		iApprovals, ok := patchSet["approvals"]
+		if !ok {
+			if ctx.Debug > 2 {
+				shared.Printf("LastChangesetApprovalValue: no approvals\n")
+			}
+			continue
+		}
+		approvals, ok := iApprovals.([]interface{})
+		if !ok {
+			continue
+		}
+		authorUsername, okAuthorUsername := shared.Dig(patchSet, []string{"author", "username"}, false, true)
+		authorEmail, okAuthorEmail := shared.Dig(patchSet, []string{"author", "email"}, false, true)
+		if authorUsername == "" {
+			okAuthorUsername = false
+		}
+		if authorEmail == "" {
+			okAuthorEmail = false
+		}
+		nApprovals := len(approvals)
+		if ctx.Debug > 2 {
+			shared.Printf("LastChangesetApprovalValue: %d approvals\n", nApprovals)
+		}
+		for j := nApprovals - 1; j >= 0; j-- {
+			iApproval := approvals[j]
+			approval, ok := iApproval.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			iApprovalType, ok := approval["type"]
+			if !ok {
+				continue
+			}
+			approvalType, ok := iApprovalType.(string)
+			if !ok || approvalType != GerritCodeReviewApprovalType {
+				if ctx.Debug > 2 {
+					shared.Printf("LastChangesetApprovalValue: incorrect type %+v\n", iApprovalType)
+				}
+				continue
+			}
+			byUsername, okByUsername := shared.Dig(approval, []string{"by", "username"}, false, true)
+			byEmail, okByEmail := shared.Dig(approval, []string{"by", "email"}, false, true)
+			if byUsername == "" {
+				okByUsername = false
+			}
+			if byEmail == "" {
+				okByEmail = false
+			}
+			// Printf("LastChangesetApprovalValue: (%s,%s,%s,%s) (%v,%v,%v,%v)\n", authorUsername, authorEmail, byUsername, byEmail, okAuthorUsername, okAuthorEmail, okByUsername, okByEmail)
+			var okStatus bool
+			if okByUsername && okAuthorUsername {
+				// Printf("LastChangesetApprovalValue: usernames set\n")
+				byUName, _ := byUsername.(string)
+				authorUName, _ := authorUsername.(string)
+				if byUName != authorUName {
+					status, okStatus = approval["value"]
+				}
+			} else if okByEmail && okAuthorEmail {
+				// Printf("LastChangesetApprovalValue: emails set\n")
+				byMail, _ := byEmail.(string)
+				authorMail, _ := authorEmail.(string)
+				if byMail != authorMail {
+					status, okStatus = approval["value"]
+				}
+			} else {
+				// Printf("LastChangesetApprovalValue: else case\n")
+				status, okStatus = approval["value"]
+			}
+			if ctx.Debug > 2 {
+				shared.Printf("LastChangesetApprovalValue: final (%+v,%+v)\n", status, okStatus)
+			}
+			if okStatus && status != nil {
+				return
+			}
+		}
+	}
+	return
+}
+
+// EnrichItem - return rich item from raw item
+func (j *DSGerrit) EnrichItem(ctx *shared.Ctx, item map[string]interface{}) (rich map[string]interface{}, err error) {
+	rich = make(map[string]interface{})
+	for _, field := range shared.RawFields {
+		v, _ := item[field]
+		rich[field] = v
+	}
+	iUpdatedOn, _ := shared.Dig(item, []string{"metadata__updated_on"}, true, false)
+	rich["closed"] = iUpdatedOn
+	var updatedOn time.Time
+	updatedOn, err = shared.TimeParseInterfaceString(iUpdatedOn)
+	if err != nil {
+		return
+	}
+	review, ok := item["data"].(map[string]interface{})
+	if !ok {
+		err = fmt.Errorf("missing data field in item %+v", shared.DumpPreview(item, 100))
+		return
+	}
+	j.ConvertDates(ctx, review)
+	iReviewStatus, ok := review["status"]
+	var reviewStatus string
+	if ok {
+		reviewStatus, _ = iReviewStatus.(string)
+	}
+	rich["status"] = reviewStatus
+	rich["branch"], _ = review["branch"]
+	rich["url"], _ = review["url"]
+	rich["githash"], _ = review["id"]
+	var createdOn time.Time
+	iCreatedOn, ok := review["createdOn"]
+	if ok {
+		createdOn, _ = iCreatedOn.(time.Time)
+	}
+	rich["opened"] = createdOn
+	rich["repository"], _ = review["project"]
+	rich["repo_short_name"], _ = rich["repository"]
+	rich["changeset_number"], _ = review["number"]
+	uuid, ok := rich["uuid"].(string)
+	if !ok {
+		err = fmt.Errorf("cannot read string uuid from %+v", shared.DumpPreview(rich, 100))
+		return
+	}
+	changesetNumber := j.ItemID(review)
+	rich["id"] = uuid + "_changeset_" + changesetNumber
+	summary := ""
+	iSummary, ok := review["subject"]
+	if ok {
+		summary, _ = iSummary.(string)
+	}
+	rich["summary_analyzed"] = summary
+	if len(summary) > shared.KeywordMaxlength {
+		summary = summary[:shared.KeywordMaxlength]
+	}
+	rich["summary"] = summary
+	rich["name"] = nil
+	rich["domain"] = nil
+	ownerName, ok := shared.Dig(review, []string{"owner", "name"}, false, true)
+	if ok {
+		rich["name"] = ownerName
+		iOwnerEmail, ok := shared.Dig(review, []string{"owner", "email"}, false, true)
+		if ok {
+			ownerEmail, ok := iOwnerEmail.(string)
+			if ok {
+				ary := strings.Split(ownerEmail, "@")
+				if len(ary) > 1 {
+					rich["domain"] = strings.TrimSpace(ary[1])
+				}
+			}
+		}
+	}
+	iPatchSets, ok := shared.Dig(review, []string{"patchSets"}, false, true)
+	nPatchSets := 0
+	var patchSets []interface{}
+	if ok {
+		patchSets, ok = iPatchSets.([]interface{})
+		if ok {
+			nPatchSets = len(patchSets)
+			firstPatch, ok := patchSets[0].(map[string]interface{})
+			if ok {
+				iCreatedOn, ok = firstPatch["createdOn"]
+				if ok {
+					createdOn, _ = iCreatedOn.(time.Time)
+				}
+			}
+		}
+	}
+	rich["created_on"] = createdOn
+	rich["patchsets"] = nPatchSets
+	status := j.LastChangesetApprovalValue(ctx, patchSets)
+	rich["status_value"] = status
+	rich["changeset_status_value"] = status
+	rich["changeset_status"] = reviewStatus
+	var lastUpdatedOn time.Time
+	iLastUpdatedOn, ok := review["lastUpdated"]
+	if ok {
+		lastUpdatedOn, _ = iLastUpdatedOn.(time.Time)
+	}
+	rich["last_updated"] = lastUpdatedOn
+	if reviewStatus == "MERGED" || reviewStatus == "ABANDONED" {
+		rich["timeopen"] = float64(lastUpdatedOn.Sub(createdOn).Seconds()) / 86400.0
+	} else {
+		rich["timeopen"] = float64(time.Now().Sub(createdOn).Seconds()) / 86400.0
+	}
+	wip, ok := shared.Dig(review, []string{"wip"}, false, true)
+	if ok {
+		rich["wip"] = wip
+	} else {
+		rich["wip"] = false
+	}
+	rich["open"], _ = shared.Dig(review, []string{"open"}, false, true)
+	rich["type"] = "changeset"
+	rich["metadata__updated_on"] = updatedOn
+	rich["roles"] = j.GetRoles(ctx, review, GerritReviewRoles, updatedOn)
+	// NOTE: From shared
+	rich["metadata__enriched_on"] = time.Now()
+	// rich[ProjectSlug] = ctx.ProjectSlug
+	// rich["groups"] = ctx.Groups
+	return
+}
+
+// EnrichApprovals - return rich items from raw approvals
+func (j *DSGerrit) EnrichApprovals(ctx *shared.Ctx, review, patchSet map[string]interface{}, approvals []map[string]interface{}) (richItems []interface{}, err error) {
+	iPatchSetID, ok := patchSet["id"]
+	if !ok {
+		err = fmt.Errorf("cannot get id property of patchset: %+v", patchSet)
+		return
+	}
+	patchSetID, ok := iPatchSetID.(string)
+	if !ok {
+		err = fmt.Errorf("cannot get string id property of patchset: %+v", iPatchSetID)
+		return
+	}
+	copyFields := []string{"wip", "open", "url", "summary", "repository", "branch", "changeset_number", "changeset_status", "changeset_status_value", "patchset_number", "patchset_revision", "patchset_ref", "repo_short_name"}
+	for _, approval := range approvals {
+		rich := make(map[string]interface{})
+		for _, field := range shared.RawFields {
+			v, _ := patchSet[field]
+			rich[field] = v
+		}
+		for _, field := range copyFields {
+			rich[field] = patchSet[field]
+		}
+		rich["approval_author_name"] = nil
+		rich["approval_author_domain"] = nil
+		authorName, ok := shared.Dig(approval, []string{"by", "name"}, false, true)
+		if ok {
+			rich["approval_author_name"] = authorName
+			iAuthorEmail, ok := shared.Dig(approval, []string{"by", "email"}, false, true)
+			if ok {
+				authorEmail, ok := iAuthorEmail.(string)
+				if ok {
+					ary := strings.Split(authorEmail, "@")
+					if len(ary) > 1 {
+						rich["approval_author_domain"] = strings.TrimSpace(ary[1])
+					}
+				}
+			}
+		}
+		//
+		var created time.Time
+		iCreated, ok := approval["grantedOn"]
+		if ok {
+			created, ok = iCreated.(time.Time)
+		}
+		if !ok {
+			err = fmt.Errorf("cannot read grantedOn property from approval: %+v", approval)
+			return
+		}
+		rich["approval_granted_on"] = created
+		rich["approval_value"], _ = approval["value"]
+		rich["approval_type"], _ = approval["type"]
+		desc := ""
+		iDesc, ok := approval["description"]
+		if ok {
+			desc, _ = iDesc.(string)
+		}
+		rich["approval_description_analyzed"] = desc
+		if len(desc) > shared.KeywordMaxlength {
+			desc = desc[:shared.KeywordMaxlength]
+		}
+		rich["approval_description"] = desc
+		rich["type"] = "approval"
+		rich["id"] = patchSetID + "_approval_" + fmt.Sprintf("%d.0", created.Unix())
+		rich["changeset_created_on"], _ = review["created_on"]
+		rich["metadata__updated_on"] = created
+		rich["roles"] = j.GetRoles(ctx, approval, GerritApprovalRoles, created)
+		// NOTE: From shared
+		rich["metadata__enriched_on"] = time.Now()
+		// rich[ProjectSlug] = ctx.ProjectSlug
+		// rich["groups"] = ctx.Groups
+		richItems = append(richItems, rich)
+	}
+	return
+}
+
+// EnrichPatchsets - return rich items from raw patch sets
+func (j *DSGerrit) EnrichPatchsets(ctx *shared.Ctx, review map[string]interface{}, patchSets []map[string]interface{}) (richItems []interface{}, err error) {
+	copyFields := []string{"wip", "open", "url", "summary", "repository", "branch", "changeset_number", "changeset_status", "changeset_status_value", "repo_short_name"}
+	iReviewID, ok := review["id"]
+	if !ok {
+		err = fmt.Errorf("cannot get id property of review: %+v", review)
+		return
+	}
+	reviewID, ok := iReviewID.(string)
+	if !ok {
+		err = fmt.Errorf("cannot get string id property of review: %+v", iReviewID)
+		return
+	}
+	for _, patchSet := range patchSets {
+		rich := make(map[string]interface{})
+		for _, field := range shared.RawFields {
+			v, _ := review[field]
+			rich[field] = v
+		}
+		for _, field := range copyFields {
+			rich[field] = review[field]
+		}
+		rich["patchset_author_name"] = nil
+		rich["patchset_author_domain"] = nil
+		authorName, ok := shared.Dig(patchSet, []string{"author", "name"}, false, true)
+		if ok {
+			rich["patchset_author_name"] = authorName
+			iAuthorEmail, ok := shared.Dig(patchSet, []string{"author", "email"}, false, true)
+			if ok {
+				authorEmail, ok := iAuthorEmail.(string)
+				if ok {
+					ary := strings.Split(authorEmail, "@")
+					if len(ary) > 1 {
+						rich["patchset_author_domain"] = strings.TrimSpace(ary[1])
+					}
+				}
+			}
+		}
+		rich["patchset_uploader_name"] = nil
+		rich["patchset_uploader_domain"] = nil
+		uploaderName, ok := shared.Dig(patchSet, []string{"uploader", "name"}, false, true)
+		if ok {
+			rich["patchset_uploader_name"] = uploaderName
+			iUploaderEmail, ok := shared.Dig(patchSet, []string{"uploader", "email"}, false, true)
+			if ok {
+				uploaderEmail, ok := iUploaderEmail.(string)
+				if ok {
+					ary := strings.Split(uploaderEmail, "@")
+					if len(ary) > 1 {
+						rich["patchset_uploader_domain"] = strings.TrimSpace(ary[1])
+					}
+				}
+			}
+		}
+		var created time.Time
+		iCreated, ok := patchSet["createdOn"]
+		if ok {
+			created, ok = iCreated.(time.Time)
+		}
+		if !ok {
+			err = fmt.Errorf("cannot read createdOn property from patchSet: %+v", patchSet)
+			return
+		}
+		rich["patchset_created_on"] = created
+		number := patchSet["number"]
+		rich["patchset_number"] = number
+		rich["patchset_isDraft"], _ = patchSet["isDraft"]
+		rich["patchset_kind"], _ = patchSet["kind"]
+		rich["patchset_ref"], _ = patchSet["ref"]
+		rich["patchset_revision"], _ = patchSet["revision"]
+		rich["patchset_sizeDeletions"], _ = patchSet["sizeDeletions"]
+		rich["patchset_sizeInsertions"], _ = patchSet["sizeInsertions"]
+		rich["type"] = "patchset"
+		rich["id"] = reviewID + "_patchset_" + fmt.Sprintf("%v", number)
+		rich["metadata__updated_on"] = created
+		rich["roles"] = j.GetRoles(ctx, patchSet, GerritPatchsetRoles, created)
+		// NOTE: From shared
+		rich["metadata__enriched_on"] = time.Now()
+		// rich[ProjectSlug] = ctx.ProjectSlug
+		// rich["groups"] = ctx.Groups
+		richItems = append(richItems, rich)
+		iApprovals, ok := shared.Dig(patchSet, []string{"approvals"}, false, true)
+		if ok {
+			approvalsAry, ok := iApprovals.([]interface{})
+			if ok {
+				var approvals []map[string]interface{}
+				for _, iApproval := range approvalsAry {
+					approval, ok := iApproval.(map[string]interface{})
+					if !ok {
+						continue
+					}
+					approvals = append(approvals, approval)
+				}
+				if len(approvals) > 0 {
+					var riches []interface{}
+					riches, err = j.EnrichApprovals(ctx, review, rich, approvals)
+					if err != nil {
+						return
+					}
+					richItems = append(richItems, riches...)
+				}
+			}
+		}
+	}
+	return
+}
+
+// EnrichComments - return rich items from raw patch sets
+func (j *DSGerrit) EnrichComments(ctx *shared.Ctx, review map[string]interface{}, comments []map[string]interface{}) (richItems []interface{}, err error) {
+	copyFields := []string{"wip", "open", "url", "summary", "repository", "branch", "changeset_number", "repo_short_name"}
+	iReviewID, ok := review["id"]
+	if !ok {
+		err = fmt.Errorf("cannot get id property of review: %+v", review)
+		return
+	}
+	reviewID, ok := iReviewID.(string)
+	if !ok {
+		err = fmt.Errorf("cannot get string id property of review: %+v", iReviewID)
+		return
+	}
+	for _, comment := range comments {
+		rich := make(map[string]interface{})
+		for _, field := range shared.RawFields {
+			v, _ := review[field]
+			rich[field] = v
+		}
+		for _, field := range copyFields {
+			rich[field] = review[field]
+		}
+		rich["reviewer_name"] = nil
+		rich["reviewer_domain"] = nil
+		reviewerName, ok := shared.Dig(comment, []string{"reviewer", "name"}, false, true)
+		if ok {
+			rich["reviewer_name"] = reviewerName
+			iReviewerEmail, ok := shared.Dig(comment, []string{"reviewer", "email"}, false, true)
+			if ok {
+				reviewerEmail, ok := iReviewerEmail.(string)
+				if ok {
+					ary := strings.Split(reviewerEmail, "@")
+					if len(ary) > 1 {
+						rich["reviewer_domain"] = strings.TrimSpace(ary[1])
+					}
+				}
+			}
+		}
+		var created time.Time
+		iCreated, ok := comment["timestamp"]
+		if ok {
+			created, ok = iCreated.(time.Time)
+		}
+		if !ok {
+			err = fmt.Errorf("cannot read timestamp property from comment: %+v", comment)
+			return
+		}
+		rich["comment_created_on"] = created
+		message := ""
+		iMessage, ok := comment["message"]
+		if ok {
+			message, _ = iMessage.(string)
+		}
+		rich["comment_message_analyzed"] = message
+		if len(message) > shared.KeywordMaxlength {
+			message = message[:shared.KeywordMaxlength]
+		}
+		rich["comment_message"] = message
+		rich["type"] = "comment"
+		rich["id"] = reviewID + "_comment_" + fmt.Sprintf("%d.0", created.Unix())
+		rich["metadata__updated_on"] = created
+		rich["roles"] = j.GetRoles(ctx, comment, GerritCommentRoles, created)
+		// NOTE: From shared
+		rich["metadata__enriched_on"] = time.Now()
+		richItems = append(richItems, rich)
+	}
+	return
+}
+
+// GetModelData - return data in swagger format
+func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data *models.Data) {
+	data = &models.Data{
+		DataSource: GerritDataSource,
+		MetaData:   gGerritMetaData,
+		Endpoint:   j.URL,
+	}
+	source := data.DataSource.Slug
+	for _, iDoc := range docs {
+		var updatedOn time.Time
+		doc, _ := iDoc.(map[string]interface{})
+		// FIXME:
+		shared.Printf("%s: %+v\n", source, doc)
+		// Event
+		event := &models.Event{}
+		data.Events = append(data.Events, event)
+		gMaxUpstreamDtMtx.Lock()
+		if updatedOn.After(gMaxUpstreamDt) {
+			gMaxUpstreamDt = updatedOn
+		}
+		gMaxUpstreamDtMtx.Unlock()
+	}
+	return
+}
+
 // GerritEnrichItems - iterate items and enrich them
 // items is a current pack of input items
 // docs is a pointer to where extracted identities will be stored
 func (j *DSGerrit) GerritEnrichItems(ctx *shared.Ctx, thrN int, items []interface{}, docs *[]interface{}, final bool) (err error) {
-	// FIXME
+	shared.Printf("input processing(%d/%d/%v)\n", len(items), len(*docs), final)
+	outputDocs := func() {
+		if len(*docs) > 0 {
+			// actual output
+			shared.Printf("output processing(%d/%d/%v)\n", len(items), len(*docs), final)
+			data := j.GetModelData(ctx, *docs)
+			// FIXME: actual output to some consumer...
+			jsonBytes, err := jsoniter.Marshal(data)
+			if err != nil {
+				shared.Printf("Error: %+v\n", err)
+				return
+			}
+			shared.Printf("%s\n", string(jsonBytes))
+			*docs = []interface{}{}
+			gMaxUpstreamDtMtx.Lock()
+			defer gMaxUpstreamDtMtx.Unlock()
+			shared.SetLastUpdate(ctx, j.URL, gMaxUpstreamDt)
+		}
+	}
+	if final {
+		defer func() {
+			outputDocs()
+		}()
+	}
+	// NOTE: non-generic code starts
+	if ctx.Debug > 0 {
+		shared.Printf("gerrit enrich items %d/%d func\n", len(items), len(*docs))
+	}
+	var (
+		mtx *sync.RWMutex
+		ch  chan error
+	)
+	if thrN > 1 {
+		mtx = &sync.RWMutex{}
+		ch = make(chan error)
+	}
+	getRichItem := func(doc map[string]interface{}) (rich map[string]interface{}, e error) {
+		rich, e = j.EnrichItem(ctx, doc)
+		if e != nil {
+			return
+		}
+		data, _ := shared.Dig(doc, []string{"data"}, true, false)
+		iPatchSets, ok := shared.Dig(data, []string{"patchSets"}, false, true)
+		if ok {
+			patchSets, ok := iPatchSets.([]interface{})
+			if ok {
+				var patches []map[string]interface{}
+				for _, iPatch := range patchSets {
+					patch, ok := iPatch.(map[string]interface{})
+					if !ok {
+						continue
+					}
+					patches = append(patches, patch)
+				}
+				if len(patches) > 0 {
+					var riches []interface{}
+					riches, e = j.EnrichPatchsets(ctx, rich, patches)
+					if e != nil {
+						return
+					}
+					rich["patchset_array"] = riches
+				}
+			}
+		}
+		iComments, ok := shared.Dig(data, []string{"comments"}, false, true)
+		if ok {
+			comments, ok := iComments.([]interface{})
+			if ok {
+				var comms []map[string]interface{}
+				for _, iComment := range comments {
+					comment, ok := iComment.(map[string]interface{})
+					if !ok {
+						continue
+					}
+					comms = append(comms, comment)
+				}
+				if len(comms) > 0 {
+					var riches []interface{}
+					riches, e = j.EnrichComments(ctx, rich, comms)
+					if e != nil {
+						return
+					}
+					rich["comments_array"] = riches
+				}
+			}
+		}
+		return
+	}
+	nThreads := 0
+	procItem := func(c chan error, idx int) (e error) {
+		if thrN > 1 {
+			mtx.RLock()
+		}
+		item := items[idx]
+		if thrN > 1 {
+			mtx.RUnlock()
+		}
+		defer func() {
+			if c != nil {
+				c <- e
+			}
+		}()
+		// NOTE: never refer to _source - we no longer use ES
+		doc, ok := item.(map[string]interface{})
+		if !ok {
+			e = fmt.Errorf("Failed to parse document %+v", doc)
+			return
+		}
+		rich, e := getRichItem(doc)
+		if e != nil {
+			return
+		}
+		if thrN > 1 {
+			mtx.Lock()
+		}
+		*docs = append(*docs, rich)
+		// NOTE: flush here
+		if len(*docs) >= ctx.PackSize {
+			outputDocs()
+		}
+		if thrN > 1 {
+			mtx.Unlock()
+		}
+		return
+	}
+	if thrN > 1 {
+		for i := range items {
+			go func(i int) {
+				_ = procItem(ch, i)
+			}(i)
+			nThreads++
+			if nThreads == thrN {
+				err = <-ch
+				if err != nil {
+					return
+				}
+				nThreads--
+			}
+		}
+		for nThreads > 0 {
+			err = <-ch
+			nThreads--
+			if err != nil {
+				return
+			}
+		}
+		return
+	}
+	for i := range items {
+		err = procItem(nil, i)
+		if err != nil {
+			return
+		}
+	}
 	return
 }
 
@@ -443,9 +1233,17 @@ func (j *DSGerrit) Sync(ctx *shared.Ctx) (err error) {
 		return
 	}
 	if j.SSHKeyTempPath != "" {
-		defer func() {
+		cleanup := func() {
 			shared.Printf("removing temporary SSH key %s\n", j.SSHKeyTempPath)
 			_ = os.Remove(j.SSHKeyTempPath)
+		}
+		defer cleanup()
+		c := make(chan os.Signal)
+		signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+		go func() {
+			<-c
+			cleanup()
+			os.Exit(1)
 		}()
 	}
 	// We don't have ancient gerrit versions like < 2.9 - this check is only for debugging
