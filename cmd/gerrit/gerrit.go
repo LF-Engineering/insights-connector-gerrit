@@ -1032,6 +1032,54 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data *mode
 			pMergedOn = &tMergedOn
 		}
 		// xxx
+		commits := []*models.CodeChangeRequestCommit{}
+		objAry, okObj := doc["patchset_array"].([]interface{})
+		if okObj {
+			for _, iObj := range objAry {
+				obj, okObj := iObj.(map[string]interface{})
+				if !okObj || obj == nil {
+					continue
+				}
+				objType, _ := obj["type"].(string)
+				if objType == "patchset" {
+					sha, _ := obj["patchset_revision"].(string)
+					roles, okRoles := obj["roles"].([]map[string]interface{})
+					if !okRoles || sha == "" || len(roles) == 0 {
+						continue
+					}
+					fmt.Printf("sha:%s -> %+v\n", sha, roles)
+					var (
+						author    *models.Identity
+						committer *models.Identity
+					)
+					for _, role := range roles {
+						roleType, _ := role["role"].(string)
+						name, _ := role["name"].(string)
+						username, _ := role["username"].(string)
+						email, _ := role["email"].(string)
+						name, username = shared.PostprocessNameUsername(name, username, email)
+						userUUID := shared.UUIDAffs(ctx, source, email, name, username)
+						identity := &models.Identity{
+							ID:           userUUID,
+							DataSourceID: source,
+							Name:         name,
+							Username:     username,
+							Email:        email,
+						}
+						if roleType == "author" {
+							author = identity
+						} else if roleType == "uploader" {
+							committer = identity
+						}
+					}
+					commits = append(commits, &models.CodeChangeRequestCommit{
+						SHA:       sha,
+						Author:    author,
+						Committer: committer,
+					})
+				}
+			}
+		}
 		// Event
 		event := &models.Event{
 			CodeChangeRequest: &models.CodeChangeRequest{
@@ -1047,9 +1095,9 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data *mode
 				IsMerged:                mergedOK,
 				Title:                   csetSummary,
 				State:                   csetStatus,
+				Commits:                 commits,
 				/*
 					Activities:              activities,
-					Commits:                 commits,
 				*/
 			},
 		}

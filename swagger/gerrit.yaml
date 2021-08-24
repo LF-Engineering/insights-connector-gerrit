@@ -123,10 +123,6 @@ definitions:
         type: object
         description: activity creator (ProjectDataSourceIdentity)
         $ref: "#/definitions/Identity"
-      Commits:
-        type: array
-        items:
-          $ref: "#/definitions/CodeChangeRequestCommit"
   CodeChangeRequest:
     type: object
     properties:
@@ -177,6 +173,10 @@ definitions:
         type: array
         items:
           $ref: "#/definitions/CodeChangeRequestActivity"
+      Commits:
+        type: array
+        items:
+          $ref: "#/definitions/CodeChangeRequestCommit"
   Event:
     type: object
     description: single event in gerrit is a review/changeset (which is an activity on CodeChangeRequest), it contains comments and patchsets, a patchset contains approvals
