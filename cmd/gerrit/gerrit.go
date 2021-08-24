@@ -13,6 +13,7 @@ import (
 
 	"github.com/LF-Engineering/insights-datasource-gerrit/gen/models"
 	shared "github.com/LF-Engineering/insights-datasource-shared"
+	jsoniter "github.com/json-iterator/go"
 	// jsoniter "github.com/json-iterator/go"
 )
 
@@ -282,6 +283,145 @@ func (j *DSGerrit) Init(ctx *shared.Ctx) (err error) {
 	return
 }
 
+// ItemID - return unique identifier for an item
+func (j *DSGerrit) ItemID(item interface{}) string {
+	id, ok := item.(map[string]interface{})["number"].(float64)
+	if !ok {
+		shared.Fatalf("gerrit: ItemID() - cannot extract number from %+v", shared.DumpKeys(item))
+	}
+	return fmt.Sprintf("%.0f", id)
+}
+
+// ItemUpdatedOn - return updated on date for an item
+func (j *DSGerrit) ItemUpdatedOn(item interface{}) time.Time {
+	epoch, ok := item.(map[string]interface{})["lastUpdated"].(float64)
+	if !ok {
+		shared.Fatalf("gerrit: ItemUpdatedOn() - cannot extract lastUpdated from %+v", shared.DumpKeys(item))
+	}
+	return time.Unix(int64(epoch), 0)
+}
+
+// GetGerritReviews - get gerrit reviews
+func (j *DSGerrit) GetGerritReviews(ctx *shared.Ctx, after, before string, afterEpoch, beforeEpoch float64, startFrom int) (reviews []map[string]interface{}, newStartFrom int, err error) {
+	cmdLine := j.GerritCmd
+	// https://gerrit-review.googlesource.com/Documentation/user-search.html:
+	// ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ./ssh-key.secret -p XYZ usr@gerrit-url gerrit query after:'1970-01-01 00:00:00' limit: 2 (status:open OR status:closed) --all-approvals --all-reviewers --comments --format=JSON
+	// For unknown reasons , gerrit is not returning data if number of seconds is not equal to 00 - so I'm updating query string to set seconds to ":00"
+	after = after[:len(after)-3] + ":00"
+	before = before[:len(before)-3] + ":00"
+	cmdLine = append(cmdLine, "query")
+	if ctx.ProjectFilter && ctx.Project != "" {
+		cmdLine = append(cmdLine, "project:", ctx.Project)
+	}
+	cmdLine = append(cmdLine, `after:"`+after+`"`, `before:"`+before+`"`, "limit:", strconv.Itoa(j.MaxReviews), "(status:open OR status:closed)", "--all-approvals", "--all-reviewers", "--comments", "--format=JSON")
+	// 2006-01-02[ 15:04:05[.890][ -0700]]
+	if startFrom > 0 {
+		cmdLine = append(cmdLine, "--start="+strconv.Itoa(startFrom))
+	}
+	var (
+		sout string
+		serr string
+	)
+	if ctx.Debug > 0 {
+		shared.Printf("getting reviews via: %v\n", cmdLine)
+	}
+	sout, serr, err = shared.ExecCommand(ctx, cmdLine, "", nil)
+	if err != nil {
+		shared.Printf("error executing %v: %v\n%s\n%s\n", cmdLine, err, sout, serr)
+		return
+	}
+	data := strings.Replace("["+strings.Replace(sout, "\n", ",", -1)+"]", ",]", "]", -1)
+	var items []interface{}
+	err = jsoniter.Unmarshal([]byte(data), &items)
+	if err != nil {
+		return
+	}
+	for i, iItem := range items {
+		item, _ := iItem.(map[string]interface{})
+		//Printf("#%d) %v\n", i, DumpKeys(item))
+		iMoreChanges, ok := item["moreChanges"]
+		if ok {
+			moreChanges, ok := iMoreChanges.(bool)
+			if ok {
+				if moreChanges {
+					newStartFrom = startFrom + i
+					if ctx.Debug > 0 {
+						shared.Printf("#%d) moreChanges: %v, newStartFrom: %d\n", i, moreChanges, newStartFrom)
+					}
+				}
+			} else {
+				shared.Printf("cannot read boolean value from %v\n", iMoreChanges)
+			}
+			return
+		}
+		_, ok = item["project"]
+		if !ok {
+			if ctx.Debug > 0 {
+				shared.Printf("#%d) project not found: %+v", i, item)
+			}
+			continue
+		}
+		iLastUpdated, ok := item["lastUpdated"]
+		if ok {
+			lastUpdated, ok := iLastUpdated.(float64)
+			if ok {
+				if lastUpdated < afterEpoch || lastUpdated > beforeEpoch {
+					if ctx.Debug > 1 {
+						shared.Printf("#%d) lastUpdated: %v < afterEpoch: %v or > beforeEpoch: %v, skipping\n", i, lastUpdated, afterEpoch, beforeEpoch)
+					}
+					continue
+				}
+			} else {
+				shared.Printf("cannot read float value from %v\n", iLastUpdated)
+			}
+		} else {
+			shared.Printf("cannot read lastUpdated from %v\n", item)
+		}
+		reviews = append(reviews, item)
+	}
+	return
+}
+
+// GerritEnrichItems - iterate items and enrich them
+// items is a current pack of input items
+// docs is a pointer to where extracted identities will be stored
+func (j *DSGerrit) GerritEnrichItems(ctx *shared.Ctx, thrN int, items []interface{}, docs *[]interface{}, final bool) (err error) {
+	// FIXME
+	return
+}
+
+// AddMetadata - add metadata to the item
+func (j *DSGerrit) AddMetadata(ctx *shared.Ctx, item interface{}) (mItem map[string]interface{}) {
+	mItem = make(map[string]interface{})
+	origin := j.URL
+	tags := ctx.Tags
+	if len(tags) == 0 {
+		tags = []string{origin}
+	}
+	itemID := j.ItemID(item)
+	updatedOn := j.ItemUpdatedOn(item)
+	uuid := shared.UUIDNonEmpty(ctx, origin, itemID)
+	timestamp := time.Now()
+	mItem["backend_name"] = ctx.DS
+	mItem["backend_version"] = GerritBackendVersion
+	mItem["timestamp"] = fmt.Sprintf("%.06f", float64(timestamp.UnixNano())/1.0e9)
+	mItem["uuid"] = uuid
+	mItem["origin"] = origin
+	mItem["tags"] = tags
+	mItem["offset"] = float64(updatedOn.Unix())
+	mItem["category"] = "review"
+	mItem["search_fields"] = make(map[string]interface{})
+	project, _ := shared.Dig(item, []string{"project"}, true, false)
+	hash, _ := shared.Dig(item, []string{"id"}, true, false)
+	shared.FatalOnError(shared.DeepSet(mItem, []string{"search_fields", GerritDefaultSearchField}, itemID, false))
+	shared.FatalOnError(shared.DeepSet(mItem, []string{"search_fields", "project_name"}, project, false))
+	shared.FatalOnError(shared.DeepSet(mItem, []string{"search_fields", "review_hash"}, hash, false))
+	mItem["metadata__updated_on"] = shared.ToESDate(updatedOn)
+	mItem["metadata__timestamp"] = shared.ToESDate(timestamp)
+	// mItem[ProjectSlug] = ctx.ProjectSlug
+	return
+}
+
 // Sync - sync Gerrit data source
 func (j *DSGerrit) Sync(ctx *shared.Ctx) (err error) {
 	thrN := shared.GetThreadsNum(ctx)
@@ -315,186 +455,184 @@ func (j *DSGerrit) Sync(ctx *shared.Ctx) (err error) {
 			return
 		}
 	}
-	/*
-		var (
-			startFrom   int
-			after       string
-			afterEpoch  float64
-			before      string
-			beforeEpoch float64
-		)
-		if ctx.DateFrom != nil {
-			after = shared.ToYMDHMSDate(*ctx.DateFrom)
-			afterEpoch = float64(ctx.DateFrom.Unix())
-		} else {
-			after = "1970-01-01 00:00:00"
-			afterEpoch = 0.0
-		}
-		if ctx.DateTo != nil {
-			before = shared.ToYMDHMSDate(*ctx.DateTo)
-			beforeEpoch = float64(ctx.DateTo.Unix())
-		} else {
-			before = "2100-01-01 00:00:00"
-			beforeEpoch = 4102444800.0
-		}
-			var (
-				ch            chan error
-				allDocs       []interface{}
-				allReviews    []interface{}
-				allReviewsMtx *sync.Mutex
-				escha         []chan error
-				eschaMtx      *sync.Mutex
-			)
-			if thrN > 1 {
-				ch = make(chan error)
-				allReviewsMtx = &sync.Mutex{}
-				eschaMtx = &sync.Mutex{}
+	var (
+		startFrom   int
+		after       string
+		afterEpoch  float64
+		before      string
+		beforeEpoch float64
+	)
+	if ctx.DateFrom != nil {
+		after = shared.ToYMDHMSDate(*ctx.DateFrom)
+		afterEpoch = float64(ctx.DateFrom.Unix())
+	} else {
+		after = "1970-01-01 00:00:00"
+		afterEpoch = 0.0
+	}
+	if ctx.DateTo != nil {
+		before = shared.ToYMDHMSDate(*ctx.DateTo)
+		beforeEpoch = float64(ctx.DateTo.Unix())
+	} else {
+		before = "2100-01-01 00:00:00"
+		beforeEpoch = 4102444800.0
+	}
+	var (
+		ch            chan error
+		allDocs       []interface{}
+		allReviews    []interface{}
+		allReviewsMtx *sync.Mutex
+		escha         []chan error
+		eschaMtx      *sync.Mutex
+	)
+	if thrN > 1 {
+		ch = make(chan error)
+		allReviewsMtx = &sync.Mutex{}
+		eschaMtx = &sync.Mutex{}
+	}
+	nThreads := 0
+	processReview := func(c chan error, review map[string]interface{}) (wch chan error, e error) {
+		defer func() {
+			if c != nil {
+				c <- e
 			}
-			nThreads := 0
-			processReview := func(c chan error, review map[string]interface{}) (wch chan error, e error) {
+		}()
+		esItem := j.AddMetadata(ctx, review)
+		if ctx.Project != "" {
+			review["project"] = ctx.Project
+		}
+		esItem["data"] = review
+		if allReviewsMtx != nil {
+			allReviewsMtx.Lock()
+		}
+		allReviews = append(allReviews, esItem)
+		nReviews := len(allReviews)
+		if nReviews >= ctx.PackSize {
+			sendToQueue := func(c chan error) (ee error) {
 				defer func() {
 					if c != nil {
-						c <- e
+						c <- ee
 					}
 				}()
-				esItem := j.AddMetadata(ctx, review)
-				if ctx.Project != "" {
-					review["project"] = ctx.Project
+				ee = j.GerritEnrichItems(ctx, thrN, allReviews, &allDocs, false)
+				// ee = SendToQueue(ctx, j, true, UUID, allReviews)
+				if ee != nil {
+					shared.Printf("error %v sending %d reviews to queue\n", ee, len(allReviews))
 				}
-				esItem["data"] = review
+				allReviews = []interface{}{}
 				if allReviewsMtx != nil {
-					allReviewsMtx.Lock()
-				}
-				allReviews = append(allReviews, esItem)
-				nReviews := len(allReviews)
-				if nReviews >= ctx.PackSize {
-					sendToQueue := func(c chan error) (ee error) {
-						defer func() {
-							if c != nil {
-								c <- ee
-							}
-						}()
-						ee = j.GerritEnrichItems(ctx, thrN, allReviews, &allDocs, false)
-						// ee = SendToQueue(ctx, j, true, UUID, allReviews)
-						if ee != nil {
-							shared.Printf("error %v sending %d reviews to queue\n", ee, len(allReviews))
-						}
-						allReviews = []interface{}{}
-						if allReviewsMtx != nil {
-							allReviewsMtx.Unlock()
-						}
-						return
-					}
-					if thrN > 1 {
-						wch = make(chan error)
-						go func() {
-							_ = sendToQueue(wch)
-						}()
-					} else {
-						e = sendToQueue(nil)
-						if e != nil {
-							return
-						}
-					}
-				} else {
-					if allReviewsMtx != nil {
-						allReviewsMtx.Unlock()
-					}
+					allReviewsMtx.Unlock()
 				}
 				return
 			}
 			if thrN > 1 {
-				for {
-					var reviews []map[string]interface{}
-					reviews, startFrom, err = j.GetGerritReviews(ctx, after, afterEpoch, before, beforeEpoch, startFrom)
-					if err != nil {
-						return
-					}
-					for _, review := range reviews {
-						go func(review map[string]interface{}) {
-							var (
-								e    error
-								esch chan error
-							)
-							esch, e = processReview(ch, review)
-							if e != nil {
-								shared.Printf("process error: %v\n", e)
-								return
-							}
-							if esch != nil {
-								if eschaMtx != nil {
-									eschaMtx.Lock()
-								}
-								escha = append(escha, esch)
-								if eschaMtx != nil {
-									eschaMtx.Unlock()
-								}
-							}
-						}(review)
-						nThreads++
-						if nThreads == thrN {
-							err = <-ch
-							if err != nil {
-								return
-							}
-							nThreads--
-						}
-					}
-					if startFrom == 0 {
-						break
-					}
-				}
-				for nThreads > 0 {
-					err = <-ch
-					nThreads--
-					if err != nil {
-						return
-					}
-				}
+				wch = make(chan error)
+				go func() {
+					_ = sendToQueue(wch)
+				}()
 			} else {
-				for {
-					var reviews []map[string]interface{}
-					reviews, startFrom, err = j.GetGerritReviews(ctx, after, afterEpoch, before, beforeEpoch, startFrom)
-					if err != nil {
-						return
-					}
-					for _, review := range reviews {
-						_, err = processReview(nil, review)
-						if err != nil {
-							return
-						}
-					}
-					if startFrom == 0 {
-						break
-					}
-				}
-			}
-			if eschaMtx != nil {
-				eschaMtx.Lock()
-			}
-			for _, esch := range escha {
-				err = <-esch
-				if err != nil {
-					if eschaMtx != nil {
-						eschaMtx.Unlock()
-					}
+				e = sendToQueue(nil)
+				if e != nil {
 					return
 				}
 			}
+		} else {
+			if allReviewsMtx != nil {
+				allReviewsMtx.Unlock()
+			}
+		}
+		return
+	}
+	if thrN > 1 {
+		for {
+			var reviews []map[string]interface{}
+			reviews, startFrom, err = j.GetGerritReviews(ctx, after, before, afterEpoch, beforeEpoch, startFrom)
+			if err != nil {
+				return
+			}
+			for _, review := range reviews {
+				go func(review map[string]interface{}) {
+					var (
+						e    error
+						esch chan error
+					)
+					esch, e = processReview(ch, review)
+					if e != nil {
+						shared.Printf("process error: %v\n", e)
+						return
+					}
+					if esch != nil {
+						if eschaMtx != nil {
+							eschaMtx.Lock()
+						}
+						escha = append(escha, esch)
+						if eschaMtx != nil {
+							eschaMtx.Unlock()
+						}
+					}
+				}(review)
+				nThreads++
+				if nThreads == thrN {
+					err = <-ch
+					if err != nil {
+						return
+					}
+					nThreads--
+				}
+			}
+			if startFrom == 0 {
+				break
+			}
+		}
+		for nThreads > 0 {
+			err = <-ch
+			nThreads--
+			if err != nil {
+				return
+			}
+		}
+	} else {
+		for {
+			var reviews []map[string]interface{}
+			reviews, startFrom, err = j.GetGerritReviews(ctx, after, before, afterEpoch, beforeEpoch, startFrom)
+			if err != nil {
+				return
+			}
+			for _, review := range reviews {
+				_, err = processReview(nil, review)
+				if err != nil {
+					return
+				}
+			}
+			if startFrom == 0 {
+				break
+			}
+		}
+	}
+	if eschaMtx != nil {
+		eschaMtx.Lock()
+	}
+	for _, esch := range escha {
+		err = <-esch
+		if err != nil {
 			if eschaMtx != nil {
 				eschaMtx.Unlock()
 			}
-			nReviews := len(allReviews)
-			if ctx.Debug > 0 {
-				shared.Printf("%d remaining reviews to send to queue\n", nReviews)
-			}
-			// NOTE: for all items, even if 0 - to flush the queue
-			err = j.GerritEnrichItems(ctx, thrN, allReviews, &allDocs, true)
-			//err = SendToQueue(ctx, j, true, UUID, allReviews)
-			if err != nil {
-				shared.Printf("Error %v sending %d reviews to queue\n", err, len(allReviews))
-			}
-	*/
+			return
+		}
+	}
+	if eschaMtx != nil {
+		eschaMtx.Unlock()
+	}
+	nReviews := len(allReviews)
+	if ctx.Debug > 0 {
+		shared.Printf("%d remaining reviews to send to queue\n", nReviews)
+	}
+	// NOTE: for all items, even if 0 - to flush the queue
+	err = j.GerritEnrichItems(ctx, thrN, allReviews, &allDocs, true)
+	//err = SendToQueue(ctx, j, true, UUID, allReviews)
+	if err != nil {
+		shared.Printf("Error %v sending %d reviews to queue\n", err, len(allReviews))
+	}
 	// NOTE: Non-generic ends here
 	gMaxUpstreamDtMtx.Lock()
 	defer gMaxUpstreamDtMtx.Unlock()
