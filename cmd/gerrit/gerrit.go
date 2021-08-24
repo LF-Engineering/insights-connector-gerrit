@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"regexp"
 	"strconv"
@@ -190,6 +191,76 @@ func (j *DSGerrit) Validate() (err error) {
 	return
 }
 
+// InitGerrit - initializes gerrit client
+func (j *DSGerrit) InitGerrit(ctx *shared.Ctx) (err error) {
+	if j.DisableHostKeyCheck {
+		j.SSHOpts += "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "
+	}
+	if j.SSHKey != "" {
+		var f *os.File
+		f, err = ioutil.TempFile("", "id_rsa")
+		if err != nil {
+			return
+		}
+		j.SSHKeyTempPath = f.Name()
+		_, err = f.Write([]byte(j.SSHKey))
+		if err != nil {
+			return
+		}
+		err = f.Close()
+		if err != nil {
+			return
+		}
+		err = os.Chmod(j.SSHKeyTempPath, 0600)
+		if err != nil {
+			return
+		}
+		j.SSHOpts += "-i " + j.SSHKeyTempPath + " "
+	} else {
+		if j.SSHKeyPath != "" {
+			j.SSHOpts += "-i " + j.SSHKeyPath + " "
+		}
+	}
+	if strings.HasSuffix(j.SSHOpts, " ") {
+		j.SSHOpts = j.SSHOpts[:len(j.SSHOpts)-1]
+	}
+	gerritCmd := fmt.Sprintf("ssh %s -p %d %s@%s gerrit", j.SSHOpts, j.SSHPort, j.User, j.URL)
+	ary := strings.Split(gerritCmd, " ")
+	for _, item := range ary {
+		if item == "" {
+			continue
+		}
+		j.GerritCmd = append(j.GerritCmd, item)
+	}
+	return
+}
+
+// GetGerritVersion - get gerrit version
+func (j *DSGerrit) GetGerritVersion(ctx *shared.Ctx) (err error) {
+	cmdLine := j.GerritCmd
+	cmdLine = append(cmdLine, "version")
+	var (
+		sout string
+		serr string
+	)
+	sout, serr, err = shared.ExecCommand(ctx, cmdLine, "", nil)
+	if err != nil {
+		shared.Printf("error executing %v: %v\n%s\n%s\n", cmdLine, err, sout, serr)
+		return
+	}
+	match := GerritVersionRegexp.FindAllStringSubmatch(sout, -1)
+	if len(match) < 1 {
+		err = fmt.Errorf("cannot parse gerrit version '%s'", sout)
+		return
+	}
+	j.VersionMajor, _ = strconv.Atoi(match[0][1])
+	j.VersionMinor, _ = strconv.Atoi(match[0][2])
+	if ctx.Debug > 0 {
+		shared.Printf("Detected gerrit %d.%d\n", j.VersionMajor, j.VersionMinor)
+	}
+	return
+}
+
 // Init - initialize Gerrit data source
 func (j *DSGerrit) Init(ctx *shared.Ctx) (err error) {
 	shared.NoSSLVerify()
@@ -227,6 +298,203 @@ func (j *DSGerrit) Sync(ctx *shared.Ctx) (err error) {
 		shared.Printf("%s fetching till %v (%d threads)\n", j.URL, ctx.DateTo, thrN)
 	}
 	// NOTE: Non-generic starts here
+	err = j.InitGerrit(ctx)
+	if err != nil {
+		return
+	}
+	if j.SSHKeyTempPath != "" {
+		defer func() {
+			shared.Printf("removing temporary SSH key %s\n", j.SSHKeyTempPath)
+			_ = os.Remove(j.SSHKeyTempPath)
+		}()
+	}
+	// We don't have ancient gerrit versions like < 2.9 - this check is only for debugging
+	if ctx.Debug > 1 {
+		err = j.GetGerritVersion(ctx)
+		if err != nil {
+			return
+		}
+	}
+	/*
+		var (
+			startFrom   int
+			after       string
+			afterEpoch  float64
+			before      string
+			beforeEpoch float64
+		)
+		if ctx.DateFrom != nil {
+			after = shared.ToYMDHMSDate(*ctx.DateFrom)
+			afterEpoch = float64(ctx.DateFrom.Unix())
+		} else {
+			after = "1970-01-01 00:00:00"
+			afterEpoch = 0.0
+		}
+		if ctx.DateTo != nil {
+			before = shared.ToYMDHMSDate(*ctx.DateTo)
+			beforeEpoch = float64(ctx.DateTo.Unix())
+		} else {
+			before = "2100-01-01 00:00:00"
+			beforeEpoch = 4102444800.0
+		}
+			var (
+				ch            chan error
+				allDocs       []interface{}
+				allReviews    []interface{}
+				allReviewsMtx *sync.Mutex
+				escha         []chan error
+				eschaMtx      *sync.Mutex
+			)
+			if thrN > 1 {
+				ch = make(chan error)
+				allReviewsMtx = &sync.Mutex{}
+				eschaMtx = &sync.Mutex{}
+			}
+			nThreads := 0
+			processReview := func(c chan error, review map[string]interface{}) (wch chan error, e error) {
+				defer func() {
+					if c != nil {
+						c <- e
+					}
+				}()
+				esItem := j.AddMetadata(ctx, review)
+				if ctx.Project != "" {
+					review["project"] = ctx.Project
+				}
+				esItem["data"] = review
+				if allReviewsMtx != nil {
+					allReviewsMtx.Lock()
+				}
+				allReviews = append(allReviews, esItem)
+				nReviews := len(allReviews)
+				if nReviews >= ctx.PackSize {
+					sendToQueue := func(c chan error) (ee error) {
+						defer func() {
+							if c != nil {
+								c <- ee
+							}
+						}()
+						ee = j.GerritEnrichItems(ctx, thrN, allReviews, &allDocs, false)
+						// ee = SendToQueue(ctx, j, true, UUID, allReviews)
+						if ee != nil {
+							shared.Printf("error %v sending %d reviews to queue\n", ee, len(allReviews))
+						}
+						allReviews = []interface{}{}
+						if allReviewsMtx != nil {
+							allReviewsMtx.Unlock()
+						}
+						return
+					}
+					if thrN > 1 {
+						wch = make(chan error)
+						go func() {
+							_ = sendToQueue(wch)
+						}()
+					} else {
+						e = sendToQueue(nil)
+						if e != nil {
+							return
+						}
+					}
+				} else {
+					if allReviewsMtx != nil {
+						allReviewsMtx.Unlock()
+					}
+				}
+				return
+			}
+			if thrN > 1 {
+				for {
+					var reviews []map[string]interface{}
+					reviews, startFrom, err = j.GetGerritReviews(ctx, after, afterEpoch, before, beforeEpoch, startFrom)
+					if err != nil {
+						return
+					}
+					for _, review := range reviews {
+						go func(review map[string]interface{}) {
+							var (
+								e    error
+								esch chan error
+							)
+							esch, e = processReview(ch, review)
+							if e != nil {
+								shared.Printf("process error: %v\n", e)
+								return
+							}
+							if esch != nil {
+								if eschaMtx != nil {
+									eschaMtx.Lock()
+								}
+								escha = append(escha, esch)
+								if eschaMtx != nil {
+									eschaMtx.Unlock()
+								}
+							}
+						}(review)
+						nThreads++
+						if nThreads == thrN {
+							err = <-ch
+							if err != nil {
+								return
+							}
+							nThreads--
+						}
+					}
+					if startFrom == 0 {
+						break
+					}
+				}
+				for nThreads > 0 {
+					err = <-ch
+					nThreads--
+					if err != nil {
+						return
+					}
+				}
+			} else {
+				for {
+					var reviews []map[string]interface{}
+					reviews, startFrom, err = j.GetGerritReviews(ctx, after, afterEpoch, before, beforeEpoch, startFrom)
+					if err != nil {
+						return
+					}
+					for _, review := range reviews {
+						_, err = processReview(nil, review)
+						if err != nil {
+							return
+						}
+					}
+					if startFrom == 0 {
+						break
+					}
+				}
+			}
+			if eschaMtx != nil {
+				eschaMtx.Lock()
+			}
+			for _, esch := range escha {
+				err = <-esch
+				if err != nil {
+					if eschaMtx != nil {
+						eschaMtx.Unlock()
+					}
+					return
+				}
+			}
+			if eschaMtx != nil {
+				eschaMtx.Unlock()
+			}
+			nReviews := len(allReviews)
+			if ctx.Debug > 0 {
+				shared.Printf("%d remaining reviews to send to queue\n", nReviews)
+			}
+			// NOTE: for all items, even if 0 - to flush the queue
+			err = j.GerritEnrichItems(ctx, thrN, allReviews, &allDocs, true)
+			//err = SendToQueue(ctx, j, true, UUID, allReviews)
+			if err != nil {
+				shared.Printf("Error %v sending %d reviews to queue\n", err, len(allReviews))
+			}
+	*/
 	// NOTE: Non-generic ends here
 	gMaxUpstreamDtMtx.Lock()
 	defer gMaxUpstreamDtMtx.Unlock()
