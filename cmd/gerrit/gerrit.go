@@ -1005,10 +1005,28 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data *mode
 	for _, iDoc := range docs {
 		var updatedOn time.Time
 		doc, _ := iDoc.(map[string]interface{})
-		// FIXME:
-		shared.Printf("%s: %+v\n", source, doc)
+		docUUID, _ := doc["uuid"].(string)
 		// Event
-		event := &models.Event{}
+		event := &models.Event{
+			CodeChangeRequest: &models.CodeChangeRequest{
+				ID:           docUUID,
+				DataSourceID: source,
+				/*
+					CodeChangeRequestID:     prID,
+					CodeChangeRequestNumber: prNumber,
+					CreatedAt:               strfmt.DateTime(createdOn),
+					UpdatedAt:               strfmt.DateTime(updatedOn),
+					ClosedAt:                closedOn,
+					IsClosed:                isClosed,
+					MergedAt:                mergedOn,
+					IsMerged:                isMerged,
+					Title:                   title,
+					State:                   state,
+					Activities:              activities,
+					Commits:                 commits,
+				*/
+			},
+		}
 		data.Events = append(data.Events, event)
 		gMaxUpstreamDtMtx.Lock()
 		if updatedOn.After(gMaxUpstreamDt) {

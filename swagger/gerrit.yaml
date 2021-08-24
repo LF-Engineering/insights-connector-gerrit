@@ -58,6 +58,20 @@ definitions:
         type: string
         example: gerrit
         description: data source type slug (FK)
+  CodeChangeRequestCommit:
+    type: object
+    properties:
+      SHA:
+        type: string
+        example: 2b20505d9d60202c6779342033d344dba0685d1b
+      Author:
+        type: object
+        description: committer
+        $ref: "#/definitions/Identity"
+      Committer:
+        type: object
+        description: committer
+        $ref: "#/definitions/Identity"
   CodeChangeRequestActivity:
     type: object
     properties:
@@ -79,27 +93,22 @@ definitions:
         example: '2019-09-02 03:00:33.000000'
       ActivityType:
         type: string
-        example: unknown yet (gerrit_review_created, gerrit_review_commit, gerrit_review_comment_added, gerrit_review_approval_added), note that approval can be approving or rejecting, approved when state >= 0
+        example: unknown yet (gerrit_changeset_created, gerrit_comment_added, gerrit_approval_added), note that approval can be approving or rejecting, approved when state >= 0
         description: allows reconstructing relations
       Body:
         type: string
-        description: PR/comment/review body
+        description: changeset/patchset/approval body
         example: My comment body
         x-nullable: true
       URL:
         type: string
-        description: PR/comment/review URL
+        description: changeset/patchset/approval URL
         x-nullable: true
       Key:
         type: string
-        description: FIXME may be needed to reconstruct gerrit structures (this is Gerrit comment ID if activity is a comment or CodeChangeRequest.Number when activity is review/patchset or Approval ID when activity is an approval)
+        description: may be needed to reconstruct gerrit structures (this is Gerrit comment ID, patchset ID, changeset ID)
         example: "150"
         x-nullable: true
-      CommitSHA:
-        type: string
-        x-nullable: true
-        example: 2b20505d9d60202c6779342033d344dba0685d1b
-        description: if activity type is a review, then we have a commit SHA
       State:
         type: integer
         x-nullable: true
@@ -114,20 +123,10 @@ definitions:
         type: object
         description: activity creator (ProjectDataSourceIdentity)
         $ref: "#/definitions/Identity"
-  CodeChangeRequestCommit:
-    type: object
-    properties:
-      SHA:
-        type: string
-        example: 2b20505d9d60202c6779342033d344dba0685d1b
-      Author:
-        type: object
-        description: committer
-        $ref: "#/definitions/Identity"
-      Committer:
-        type: object
-        description: committer
-        $ref: "#/definitions/Identity"
+      Commits:
+        type: array
+        items:
+          $ref: "#/definitions/CodeChangeRequestCommit"
   CodeChangeRequest:
     type: object
     properties:
@@ -178,18 +177,9 @@ definitions:
         type: array
         items:
           $ref: "#/definitions/CodeChangeRequestActivity"
-      Labels:
-        type: array
-        items:
-          type: string
-          example: /lgtm
-      Commits:
-        type: array
-        items:
-          $ref: "#/definitions/CodeChangeRequestCommit"
   Event:
     type: object
-    description: single event in gerrit is a review (which is an activity on CodeChangeRequest)
+    description: single event in gerrit is a review/changeset (which is an activity on CodeChangeRequest), it contains comments and patchsets, a patchset contains approvals
     properties:
       CodeChangeRequest:
         type: object
