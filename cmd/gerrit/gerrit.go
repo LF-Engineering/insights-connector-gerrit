@@ -1122,7 +1122,6 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data *mode
 				} else {
 					var (
 						reviewBody   *string
-						reviewURL    *string
 						commitID     *string
 						reviewState  *int64
 						iReviewState int64
@@ -1131,10 +1130,6 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data *mode
 					sReviewBody, _ := obj["approval_description"].(string)
 					if sReviewBody != "" {
 						reviewBody = &sReviewBody
-					}
-					sReviewURL, _ := obj["url"].(string)
-					if sReviewURL != "" {
-						reviewURL = &sReviewURL
 					}
 					sCommitID, _ := obj["patchset_revision"].(string)
 					if sCommitID != "" {
@@ -1182,12 +1177,64 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data *mode
 							CreatedAt:            strfmt.DateTime(reviewCreatedOn),
 							Key:                  &sReviewID,
 							Body:                 reviewBody,
-							URL:                  reviewURL,
 							CommitSHA:            commitID,
 							IsApproval:           &isApproval,
 							State:                reviewState,
 						})
 					}
+				}
+			}
+		}
+		commentsAry, okComments := doc["comments_array"].([]interface{})
+		if okComments {
+			actType := "gerrit_comment_added"
+			for _, iComment := range commentsAry {
+				comment, okComment := iComment.(map[string]interface{})
+				if !okComment || comment == nil {
+					continue
+				}
+				roles, okRoles := comment["roles"].([]map[string]interface{})
+				if !okRoles || len(roles) == 0 {
+					continue
+				}
+				var commentBody *string
+				sCommentBody, _ := comment["comment_message"].(string)
+				if sCommentBody != "" {
+					commentBody = &sCommentBody
+				}
+				commentCreatedOn, _ := comment["comment_created_on"].(time.Time)
+				sCommentID, _ := comment["id"].(string)
+				if commentCreatedOn.After(updatedOn) {
+					updatedOn = commentCreatedOn
+				}
+				for _, role := range roles {
+					roleType, _ := role["role"].(string)
+					if roleType != "reviewer" {
+						continue
+					}
+					name, _ := role["name"].(string)
+					username, _ := role["username"].(string)
+					email, _ := role["email"].(string)
+					name, username = shared.PostprocessNameUsername(name, username, email)
+					userUUID := shared.UUIDAffs(ctx, source, email, name, username)
+					identity := &models.Identity{
+						ID:           userUUID,
+						DataSourceID: source,
+						Name:         name,
+						Username:     username,
+						Email:        email,
+					}
+					actUUID := shared.UUIDNonEmpty(ctx, docUUID, actType, sCommentID)
+					activities = append(activities, &models.CodeChangeRequestActivity{
+						ID:                   actUUID,
+						CodeChangeRequestKey: docUUID,
+						CodeChangeRequestID:  csetHash,
+						ActivityType:         actType,
+						Identity:             identity,
+						CreatedAt:            strfmt.DateTime(commentCreatedOn),
+						Key:                  &sCommentID,
+						Body:                 commentBody,
+					})
 				}
 			}
 		}
