@@ -341,7 +341,9 @@ func (j *DSGerrit) GetGerritReviews(ctx *shared.Ctx, after, before string, after
 	}
 	for i, iItem := range items {
 		item, _ := iItem.(map[string]interface{})
-		//Printf("#%d) %v\n", i, DumpKeys(item))
+		// shared.Printf("#%d) %v\n", i, DumpKeys(item))
+		// shared.Printf("#%d) %v\n", i, shared.AsJSON(item))
+		// shared.Printf("#%d) %v\n", i, shared.PrettyPrint(item))
 		iMoreChanges, ok := item["moreChanges"]
 		if ok {
 			moreChanges, ok := iMoreChanges.(bool)
