@@ -1490,7 +1490,7 @@ func (j *DSGerrit) Sync(ctx *shared.Ctx) (err error) {
 			_ = os.Remove(j.SSHKeyTempPath)
 		}
 		defer cleanup()
-		c := make(chan os.Signal)
+		c := make(chan os.Signal, 1)
 		signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 		go func() {
 			<-c
