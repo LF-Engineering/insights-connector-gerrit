@@ -52,7 +52,7 @@ var (
 	gMaxUpstreamDt    time.Time
 	gMaxUpstreamDtMtx = &sync.Mutex{}
 	// GerritDataSource - constant
-	GerritDataSource = &models.DataSource{Name: "Gerrit", Slug: "gerrit"}
+	GerritDataSource = &models.DataSource{Name: "Gerrit", Slug: "gerrit", Model: "changerequest"}
 	gGerritMetaData  = &models.MetaData{BackendName: "gerrit", BackendVersion: GerritBackendVersion}
 )
 

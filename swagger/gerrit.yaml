@@ -21,6 +21,9 @@ definitions:
       Name:
         type: string
         example: Gerrit
+      Model:
+        type: string
+        example: changerequest
   MetaData:
     type: object
     properties:
