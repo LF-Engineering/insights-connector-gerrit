@@ -1,4 +1,4 @@
-module github.com/LF-Engineering/insights-datasource-gerrit
+module github.com/LF-Engineering/insights-connector-gerrit
 
 go 1.15
 

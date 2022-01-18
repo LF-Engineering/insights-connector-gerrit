@@ -13,7 +13,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/LF-Engineering/insights-datasource-gerrit/gen/models"
+	"github.com/LF-Engineering/insights-connector-gerrit/gen/models"
 	shared "github.com/LF-Engineering/insights-datasource-shared"
 	"github.com/go-openapi/strfmt"
 	jsoniter "github.com/json-iterator/go"
