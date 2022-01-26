@@ -13,11 +13,17 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/LF-Engineering/insights-connector-gerrit/gen/models"
+	"github.com/LF-Engineering/lfx-event-schema/service/insights/gerrit"
+	"github.com/LF-Engineering/lfx-event-schema/utils/datalake"
+
 	shared "github.com/LF-Engineering/insights-datasource-shared"
-	"github.com/go-openapi/strfmt"
+	elastic "github.com/LF-Engineering/insights-datasource-shared/elastic"
+	logger "github.com/LF-Engineering/insights-datasource-shared/ingestjob"
+
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
+
 	jsoniter "github.com/json-iterator/go"
-	// jsoniter "github.com/json-iterator/go"
 )
 
 const (
@@ -31,6 +37,12 @@ const (
 	GerritDefaultMaxReviews = 1000
 	// GerritCodeReviewApprovalType - code review approval type
 	GerritCodeReviewApprovalType = "Code-Review"
+	// GerritDataSource - constant for gerrit source
+	GerritDataSource = "gerrit"
+	// GerritDefaultStream - Stream To Publish issues
+	GerritDefaultStream = "PUT-S3-gerrit"
+	// GerritConnector ...
+	GerritConnector = "gerrit-connector"
 )
 
 var (
@@ -51,10 +63,12 @@ var (
 	// max upstream date
 	gMaxUpstreamDt    time.Time
 	gMaxUpstreamDtMtx = &sync.Mutex{}
-	// GerritDataSource - constant
-	GerritDataSource = &models.DataSource{Name: "Gerrit", Slug: "gerrit", Model: "changerequest"}
-	gGerritMetaData  = &models.MetaData{BackendName: "gerrit", BackendVersion: GerritBackendVersion}
 )
+
+// Publisher - for streaming data to Kinesis
+type Publisher interface {
+	PushEvents(action, source, eventType, subEventType, env string, data []interface{}) error
+}
 
 // DSGerrit - DS implementation for stub - does nothing at all, just presents a skeleton code
 type DSGerrit struct {
@@ -73,12 +87,67 @@ type DSGerrit struct {
 	FlagSSHPort             *int
 	FlagMaxReviews          *int
 	FlagDisableHostKeyCheck *bool
+	FlagStream              *string
 	// Non-config variables
 	SSHOpts        string   // SSH Options
 	SSHKeyTempPath string   // if used SSHKey - temp file with this name was used to store key contents
 	GerritCmd      []string // gerrit remote command used to fetch data
 	VersionMajor   int      // gerrit major version
 	VersionMinor   int      // gerrit minor version
+	// Publisher & stream
+	Publisher
+	Stream string // stream to publish the data
+	Logger logger.Logger
+}
+
+// AddPublisher - sets Kinesis publisher
+func (j *DSGerrit) AddPublisher(publisher Publisher) {
+	j.Publisher = publisher
+}
+
+// PublisherPushEvents - this is a fake function to test publisher locally
+// FIXME: don't use when done implementing
+func (j *DSGerrit) PublisherPushEvents(ev, ori, src, cat, env string, v []interface{}) error {
+	data, err := jsoniter.Marshal(v)
+	shared.Printf("publish[ev=%s ori=%s src=%s cat=%s env=%s]: %d items: %+v -> %v\n", ev, ori, src, cat, env, len(v), string(data), err)
+	return nil
+}
+
+// AddLogger - adds logger
+func (j *DSGerrit) AddLogger(ctx *shared.Ctx) {
+	client, err := elastic.NewClientProvider(&elastic.Params{
+		URL:      os.Getenv("ELASTIC_LOG_URL"),
+		Password: os.Getenv("ELASTIC_LOG_PASSWORD"),
+		Username: os.Getenv("ELASTIC_LOG_USER"),
+	})
+	if err != nil {
+		shared.Printf("AddLogger error: %+v", err)
+		return
+	}
+	logProvider, err := logger.NewLogger(client, os.Getenv("STAGE"))
+	if err != nil {
+		shared.Printf("AddLogger error: %+v", err)
+		return
+	}
+	j.Logger = *logProvider
+}
+
+// WriteLog - writes to log
+func (j *DSGerrit) WriteLog(ctx *shared.Ctx, status, message string) {
+	_ = j.Logger.Write(&logger.Log{
+		Connector: GerritDataSource,
+		Configuration: []map[string]string{
+			{
+				"GERRIT_URL":     j.URL,
+				"GERRIT_PROJECT": ctx.Project,
+				"ES_URL":         ctx.ESURL,
+				"ProjectSlug":    ctx.Project,
+			}},
+		Status:    status,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		Message:   message,
+	})
 }
 
 // AddFlags - add Gerrit specific flags
@@ -90,6 +159,7 @@ func (j *DSGerrit) AddFlags() {
 	j.FlagSSHPort = flag.Int("gerrit-ssh-port", GerritDefaultSSHPort, fmt.Sprintf("gerrit port defaults to GerritDefaultSSHPort (%d)", GerritDefaultSSHPort))
 	j.FlagMaxReviews = flag.Int("gerrit-max-reviews", GerritDefaultMaxReviews, fmt.Sprintf("max reviews pack size defaults to GerritDefaultMaxReviews (%d)", GerritDefaultMaxReviews))
 	j.FlagDisableHostKeyCheck = flag.Bool("gerrit-disable-host-key-check", false, "disable host key check")
+	j.FlagStream = flag.String("gerrit-stream", GerritDefaultStream, "gerrit kinesis stream name, for example PUT-S3-gerrit")
 }
 
 // ParseArgs - parse gerrit specific environment variables
@@ -171,6 +241,18 @@ func (j *DSGerrit) ParseArgs(ctx *shared.Ctx) (err error) {
 	} else if !passed {
 		j.SSHPort = GerritDefaultSSHPort
 	}
+
+	// gerrit Kinesis stream
+	j.Stream = GerritDefaultStream
+	if shared.FlagPassed(ctx, "stream") {
+		j.Stream = *j.FlagStream
+	}
+	if ctx.EnvSet("STREAM") {
+		j.Stream = ctx.Env("STREAM")
+	}
+	// gGerritDataSource.Categories = j.Categories
+	// gGerritMetaData.Project = ctx.Project
+	// gGerritMetaData.Tags = ctx.Tags
 	return
 }
 
@@ -280,9 +362,23 @@ func (j *DSGerrit) Init(ctx *shared.Ctx) (err error) {
 		return
 	}
 	if ctx.Debug > 1 {
-		m := &models.Data{}
-		shared.Printf("Gerrit: %+v\nshared context: %s\nModel: %+v", j, ctx.Info(), m)
+		g := &gerrit.Changeset{}
+		shared.Printf("Gerrit: %+v\nshared context: %s\nModel: %+v\n", j, ctx.Info(), g)
 	}
+	if ctx.Debug > 0 {
+		shared.Printf("stream: '%s'\n", j.Stream)
+	}
+	if j.Stream != "" {
+		sess, err := session.NewSession()
+		if err != nil {
+			return err
+		}
+		s3Client := s3.New(sess)
+		objectStore := datalake.NewS3ObjectStore(s3Client)
+		datalakeClient := datalake.NewStoreClient(&objectStore)
+		j.AddPublisher(&datalakeClient)
+	}
+	j.AddLogger(ctx)
 	return
 }
 
@@ -1000,220 +1096,54 @@ func (j *DSGerrit) EnrichComments(ctx *shared.Ctx, review map[string]interface{}
 	return
 }
 
-// GetModelData - return data in swagger format
-func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data *models.Data) {
-	data = &models.Data{
-		DataSource: GerritDataSource,
-		MetaData:   gGerritMetaData,
-		Endpoint:   j.URL,
-	}
-	source := data.DataSource.Slug
-	for _, iDoc := range docs {
-		var (
-			pClosedOn *strfmt.DateTime
-			pMergedOn *strfmt.DateTime
-		)
-		doc, _ := iDoc.(map[string]interface{})
-		docUUID, _ := doc["uuid"].(string)
-		csetHash, _ := doc["githash"].(string)
-		csetSummary, _ := doc["summary"].(string)
-		csetStatus, _ := doc["status"].(string)
-		csetNumber, _ := doc["changeset_number"].(float64)
-		sCsetNumber := fmt.Sprintf("%.0f", csetNumber)
-		csetURL, _ := doc["url"].(string)
-		createdOn, _ := doc["opened"].(time.Time)
-		updatedOn, _ := doc["metadata__updated_on"].(time.Time)
-		closedOn, closedOK := doc["closed"].(time.Time)
-		if closedOK {
-			tClosedOn := strfmt.DateTime(closedOn)
-			pClosedOn = &tClosedOn
+// GetModelData - return data in lfx-event-schema format
+func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[string][]interface{}, err error) {
+	return
+	/*
+		data = &models.Data{
+			DataSource: GerritDataSource,
+			MetaData:   gGerritMetaData,
+			Endpoint:   j.URL,
 		}
-		mergedOn, mergedOK := doc["merged"].(time.Time)
-		if mergedOK {
-			tMergedOn := strfmt.DateTime(mergedOn)
-			pMergedOn = &tMergedOn
-		}
-		activities := []*models.CodeChangeRequestActivity{}
-		roles, okRoles := doc["roles"].([]map[string]interface{})
-		if okRoles {
-			for _, role := range roles {
-				var (
-					body *string
-					url  *string
-				)
-				actType := "gerrit_changeset_created"
-				if csetSummary != "" {
-					body = &csetSummary
-				}
-				url = &csetURL
-				name, _ := role["name"].(string)
-				username, _ := role["username"].(string)
-				email, _ := role["email"].(string)
-				name, username = shared.PostprocessNameUsername(name, username, email)
-				userUUID := shared.UUIDAffs(ctx, source, email, name, username)
-				identity := &models.Identity{
-					ID:           userUUID,
-					DataSourceID: source,
-					Name:         name,
-					Username:     username,
-					Email:        email,
-				}
-				actUUID := shared.UUIDNonEmpty(ctx, docUUID, actType)
-				activities = append(activities, &models.CodeChangeRequestActivity{
-					ID:                   actUUID,
-					CodeChangeRequestKey: docUUID,
-					CodeChangeRequestID:  csetHash,
-					ActivityType:         actType,
-					Body:                 body,
-					Identity:             identity,
-					CreatedAt:            strfmt.DateTime(createdOn),
-					Key:                  &sCsetNumber,
-					URL:                  url,
-				})
+		source := data.DataSource.Slug
+		for _, iDoc := range docs {
+			var (
+				pClosedOn *strfmt.DateTime
+				pMergedOn *strfmt.DateTime
+			)
+			doc, _ := iDoc.(map[string]interface{})
+			docUUID, _ := doc["uuid"].(string)
+			csetHash, _ := doc["githash"].(string)
+			csetSummary, _ := doc["summary"].(string)
+			csetStatus, _ := doc["status"].(string)
+			csetNumber, _ := doc["changeset_number"].(float64)
+			sCsetNumber := fmt.Sprintf("%.0f", csetNumber)
+			csetURL, _ := doc["url"].(string)
+			createdOn, _ := doc["opened"].(time.Time)
+			updatedOn, _ := doc["metadata__updated_on"].(time.Time)
+			closedOn, closedOK := doc["closed"].(time.Time)
+			if closedOK {
+				tClosedOn := strfmt.DateTime(closedOn)
+				pClosedOn = &tClosedOn
 			}
-		}
-		commits := []*models.CodeChangeRequestCommit{}
-		objAry, okObj := doc["patchset_array"].([]interface{})
-		if okObj {
-			for _, iObj := range objAry {
-				obj, okObj := iObj.(map[string]interface{})
-				if !okObj || obj == nil {
-					continue
-				}
-				objType, _ := obj["type"].(string)
-				roles, okRoles := obj["roles"].([]map[string]interface{})
-				if objType == "patchset" {
-					sha, _ := obj["patchset_revision"].(string)
-					if !okRoles || sha == "" || len(roles) == 0 {
-						continue
-					}
-					patchsetCreatedOn, _ := obj["patchset_created_on"].(time.Time)
-					var (
-						author    *models.Identity
-						committer *models.Identity
-					)
-					if patchsetCreatedOn.After(updatedOn) {
-						updatedOn = patchsetCreatedOn
-					}
-					for _, role := range roles {
-						roleType, _ := role["role"].(string)
-						name, _ := role["name"].(string)
-						username, _ := role["username"].(string)
-						email, _ := role["email"].(string)
-						name, username = shared.PostprocessNameUsername(name, username, email)
-						userUUID := shared.UUIDAffs(ctx, source, email, name, username)
-						identity := &models.Identity{
-							ID:           userUUID,
-							DataSourceID: source,
-							Name:         name,
-							Username:     username,
-							Email:        email,
-						}
-						if roleType == "author" {
-							author = identity
-						} else if roleType == "uploader" {
-							committer = identity
-						}
-					}
-					commits = append(commits, &models.CodeChangeRequestCommit{
-						SHA:       sha,
-						Author:    author,
-						Committer: committer,
-						Dt:        strfmt.DateTime(patchsetCreatedOn),
-					})
-				} else {
-					var (
-						reviewBody   *string
-						commitID     *string
-						reviewState  *int64
-						iReviewState int64
-					)
-					actType := "gerrit_approval_added"
-					sReviewBody, _ := obj["approval_description"].(string)
-					if sReviewBody != "" {
-						reviewBody = &sReviewBody
-					}
-					sCommitID, _ := obj["patchset_revision"].(string)
-					if sCommitID != "" {
-						commitID = &sCommitID
-					}
-					sReviewState, _ := obj["approval_value"].(string)
-					if sReviewState != "" {
-						var err error
-						iReviewState, err = strconv.ParseInt(sReviewState, 10, 64)
-						if err != nil {
-							continue
-						}
-						reviewState = &iReviewState
-					}
-					reviewCreatedOn, _ := obj["approval_granted_on"].(time.Time)
-					sReviewID, _ := obj["id"].(string)
-					if reviewCreatedOn.After(updatedOn) {
-						updatedOn = reviewCreatedOn
-					}
-					isApproval := iReviewState >= 0
-					for _, role := range roles {
-						roleType, _ := role["role"].(string)
-						if roleType != "by" {
-							continue
-						}
-						name, _ := role["name"].(string)
-						username, _ := role["username"].(string)
-						email, _ := role["email"].(string)
-						name, username = shared.PostprocessNameUsername(name, username, email)
-						userUUID := shared.UUIDAffs(ctx, source, email, name, username)
-						identity := &models.Identity{
-							ID:           userUUID,
-							DataSourceID: source,
-							Name:         name,
-							Username:     username,
-							Email:        email,
-						}
-						actUUID := shared.UUIDNonEmpty(ctx, docUUID, actType, sReviewID)
-						activities = append(activities, &models.CodeChangeRequestActivity{
-							ID:                   actUUID,
-							CodeChangeRequestKey: docUUID,
-							CodeChangeRequestID:  csetHash,
-							ActivityType:         actType,
-							Identity:             identity,
-							CreatedAt:            strfmt.DateTime(reviewCreatedOn),
-							Key:                  &sReviewID,
-							Body:                 reviewBody,
-							CommitSHA:            commitID,
-							IsApproval:           &isApproval,
-							State:                reviewState,
-						})
-					}
-				}
+			mergedOn, mergedOK := doc["merged"].(time.Time)
+			if mergedOK {
+				tMergedOn := strfmt.DateTime(mergedOn)
+				pMergedOn = &tMergedOn
 			}
-		}
-		commentsAry, okComments := doc["comments_array"].([]interface{})
-		if okComments {
-			actType := "gerrit_comment_added"
-			for _, iComment := range commentsAry {
-				comment, okComment := iComment.(map[string]interface{})
-				if !okComment || comment == nil {
-					continue
-				}
-				roles, okRoles := comment["roles"].([]map[string]interface{})
-				if !okRoles || len(roles) == 0 {
-					continue
-				}
-				var commentBody *string
-				sCommentBody, _ := comment["comment_message"].(string)
-				if sCommentBody != "" {
-					commentBody = &sCommentBody
-				}
-				commentCreatedOn, _ := comment["comment_created_on"].(time.Time)
-				sCommentID, _ := comment["id"].(string)
-				if commentCreatedOn.After(updatedOn) {
-					updatedOn = commentCreatedOn
-				}
+			activities := []*models.CodeChangeRequestActivity{}
+			roles, okRoles := doc["roles"].([]map[string]interface{})
+			if okRoles {
 				for _, role := range roles {
-					roleType, _ := role["role"].(string)
-					if roleType != "reviewer" {
-						continue
+					var (
+						body *string
+						url  *string
+					)
+					actType := "gerrit_changeset_created"
+					if csetSummary != "" {
+						body = &csetSummary
 					}
+					url = &csetURL
 					name, _ := role["name"].(string)
 					username, _ := role["username"].(string)
 					email, _ := role["email"].(string)
@@ -1226,47 +1156,215 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data *mode
 						Username:     username,
 						Email:        email,
 					}
-					actUUID := shared.UUIDNonEmpty(ctx, docUUID, actType, sCommentID)
+					actUUID := shared.UUIDNonEmpty(ctx, docUUID, actType)
 					activities = append(activities, &models.CodeChangeRequestActivity{
 						ID:                   actUUID,
 						CodeChangeRequestKey: docUUID,
 						CodeChangeRequestID:  csetHash,
 						ActivityType:         actType,
+						Body:                 body,
 						Identity:             identity,
-						CreatedAt:            strfmt.DateTime(commentCreatedOn),
-						Key:                  &sCommentID,
-						Body:                 commentBody,
+						CreatedAt:            strfmt.DateTime(createdOn),
+						Key:                  &sCsetNumber,
+						URL:                  url,
 					})
 				}
 			}
+			commits := []*models.CodeChangeRequestCommit{}
+			objAry, okObj := doc["patchset_array"].([]interface{})
+			if okObj {
+				for _, iObj := range objAry {
+					obj, okObj := iObj.(map[string]interface{})
+					if !okObj || obj == nil {
+						continue
+					}
+					objType, _ := obj["type"].(string)
+					roles, okRoles := obj["roles"].([]map[string]interface{})
+					if objType == "patchset" {
+						sha, _ := obj["patchset_revision"].(string)
+						if !okRoles || sha == "" || len(roles) == 0 {
+							continue
+						}
+						patchsetCreatedOn, _ := obj["patchset_created_on"].(time.Time)
+						var (
+							author    *models.Identity
+							committer *models.Identity
+						)
+						if patchsetCreatedOn.After(updatedOn) {
+							updatedOn = patchsetCreatedOn
+						}
+						for _, role := range roles {
+							roleType, _ := role["role"].(string)
+							name, _ := role["name"].(string)
+							username, _ := role["username"].(string)
+							email, _ := role["email"].(string)
+							name, username = shared.PostprocessNameUsername(name, username, email)
+							userUUID := shared.UUIDAffs(ctx, source, email, name, username)
+							identity := &models.Identity{
+								ID:           userUUID,
+								DataSourceID: source,
+								Name:         name,
+								Username:     username,
+								Email:        email,
+							}
+							if roleType == "author" {
+								author = identity
+							} else if roleType == "uploader" {
+								committer = identity
+							}
+						}
+						commits = append(commits, &models.CodeChangeRequestCommit{
+							SHA:       sha,
+							Author:    author,
+							Committer: committer,
+							Dt:        strfmt.DateTime(patchsetCreatedOn),
+						})
+					} else {
+						var (
+							reviewBody   *string
+							commitID     *string
+							reviewState  *int64
+							iReviewState int64
+						)
+						actType := "gerrit_approval_added"
+						sReviewBody, _ := obj["approval_description"].(string)
+						if sReviewBody != "" {
+							reviewBody = &sReviewBody
+						}
+						sCommitID, _ := obj["patchset_revision"].(string)
+						if sCommitID != "" {
+							commitID = &sCommitID
+						}
+						sReviewState, _ := obj["approval_value"].(string)
+						if sReviewState != "" {
+							var err error
+							iReviewState, err = strconv.ParseInt(sReviewState, 10, 64)
+							if err != nil {
+								continue
+							}
+							reviewState = &iReviewState
+						}
+						reviewCreatedOn, _ := obj["approval_granted_on"].(time.Time)
+						sReviewID, _ := obj["id"].(string)
+						if reviewCreatedOn.After(updatedOn) {
+							updatedOn = reviewCreatedOn
+						}
+						isApproval := iReviewState >= 0
+						for _, role := range roles {
+							roleType, _ := role["role"].(string)
+							if roleType != "by" {
+								continue
+							}
+							name, _ := role["name"].(string)
+							username, _ := role["username"].(string)
+							email, _ := role["email"].(string)
+							name, username = shared.PostprocessNameUsername(name, username, email)
+							userUUID := shared.UUIDAffs(ctx, source, email, name, username)
+							identity := &models.Identity{
+								ID:           userUUID,
+								DataSourceID: source,
+								Name:         name,
+								Username:     username,
+								Email:        email,
+							}
+							actUUID := shared.UUIDNonEmpty(ctx, docUUID, actType, sReviewID)
+							activities = append(activities, &models.CodeChangeRequestActivity{
+								ID:                   actUUID,
+								CodeChangeRequestKey: docUUID,
+								CodeChangeRequestID:  csetHash,
+								ActivityType:         actType,
+								Identity:             identity,
+								CreatedAt:            strfmt.DateTime(reviewCreatedOn),
+								Key:                  &sReviewID,
+								Body:                 reviewBody,
+								CommitSHA:            commitID,
+								IsApproval:           &isApproval,
+								State:                reviewState,
+							})
+						}
+					}
+				}
+			}
+			commentsAry, okComments := doc["comments_array"].([]interface{})
+			if okComments {
+				actType := "gerrit_comment_added"
+				for _, iComment := range commentsAry {
+					comment, okComment := iComment.(map[string]interface{})
+					if !okComment || comment == nil {
+						continue
+					}
+					roles, okRoles := comment["roles"].([]map[string]interface{})
+					if !okRoles || len(roles) == 0 {
+						continue
+					}
+					var commentBody *string
+					sCommentBody, _ := comment["comment_message"].(string)
+					if sCommentBody != "" {
+						commentBody = &sCommentBody
+					}
+					commentCreatedOn, _ := comment["comment_created_on"].(time.Time)
+					sCommentID, _ := comment["id"].(string)
+					if commentCreatedOn.After(updatedOn) {
+						updatedOn = commentCreatedOn
+					}
+					for _, role := range roles {
+						roleType, _ := role["role"].(string)
+						if roleType != "reviewer" {
+							continue
+						}
+						name, _ := role["name"].(string)
+						username, _ := role["username"].(string)
+						email, _ := role["email"].(string)
+						name, username = shared.PostprocessNameUsername(name, username, email)
+						userUUID := shared.UUIDAffs(ctx, source, email, name, username)
+						identity := &models.Identity{
+							ID:           userUUID,
+							DataSourceID: source,
+							Name:         name,
+							Username:     username,
+							Email:        email,
+						}
+						actUUID := shared.UUIDNonEmpty(ctx, docUUID, actType, sCommentID)
+						activities = append(activities, &models.CodeChangeRequestActivity{
+							ID:                   actUUID,
+							CodeChangeRequestKey: docUUID,
+							CodeChangeRequestID:  csetHash,
+							ActivityType:         actType,
+							Identity:             identity,
+							CreatedAt:            strfmt.DateTime(commentCreatedOn),
+							Key:                  &sCommentID,
+							Body:                 commentBody,
+						})
+					}
+				}
+			}
+			// Event
+			event := &models.Event{
+				CodeChangeRequest: &models.CodeChangeRequest{
+					ID:                      docUUID,
+					DataSourceID:            source,
+					CodeChangeRequestID:     csetHash,
+					CodeChangeRequestNumber: sCsetNumber,
+					CreatedAt:               strfmt.DateTime(createdOn),
+					UpdatedAt:               strfmt.DateTime(updatedOn),
+					ClosedAt:                pClosedOn,
+					IsClosed:                closedOK,
+					MergedAt:                pMergedOn,
+					IsMerged:                mergedOK,
+					Title:                   csetSummary,
+					State:                   csetStatus,
+					Commits:                 commits,
+					Activities:              activities,
+				},
+			}
+			data.Events = append(data.Events, event)
+			gMaxUpstreamDtMtx.Lock()
+			if updatedOn.After(gMaxUpstreamDt) {
+				gMaxUpstreamDt = updatedOn
+			}
+			gMaxUpstreamDtMtx.Unlock()
 		}
-		// Event
-		event := &models.Event{
-			CodeChangeRequest: &models.CodeChangeRequest{
-				ID:                      docUUID,
-				DataSourceID:            source,
-				CodeChangeRequestID:     csetHash,
-				CodeChangeRequestNumber: sCsetNumber,
-				CreatedAt:               strfmt.DateTime(createdOn),
-				UpdatedAt:               strfmt.DateTime(updatedOn),
-				ClosedAt:                pClosedOn,
-				IsClosed:                closedOK,
-				MergedAt:                pMergedOn,
-				IsMerged:                mergedOK,
-				Title:                   csetSummary,
-				State:                   csetStatus,
-				Commits:                 commits,
-				Activities:              activities,
-			},
-		}
-		data.Events = append(data.Events, event)
-		gMaxUpstreamDtMtx.Lock()
-		if updatedOn.After(gMaxUpstreamDt) {
-			gMaxUpstreamDt = updatedOn
-		}
-		gMaxUpstreamDtMtx.Unlock()
-	}
-	return
+	*/
 }
 
 // GerritEnrichItems - iterate items and enrich them
@@ -1278,14 +1376,40 @@ func (j *DSGerrit) GerritEnrichItems(ctx *shared.Ctx, thrN int, items []interfac
 		if len(*docs) > 0 {
 			// actual output
 			shared.Printf("output processing(%d/%d/%v)\n", len(items), len(*docs), final)
-			data := j.GetModelData(ctx, *docs)
-			// FIXME: actual output to some consumer...
-			jsonBytes, err := jsoniter.Marshal(data)
+			var (
+				reviewsData map[string][]interface{}
+				jsonBytes   []byte
+				err         error
+			)
+			reviewsData, err = j.GetModelData(ctx, *docs)
+			if err == nil {
+				if j.Publisher != nil {
+					insightsStr := "insights"
+					reviewsStr := "reviews"
+					envStr := os.Getenv("STAGE")
+					for k, v := range reviewsData {
+						switch k {
+						case "created":
+							ev, _ := v[0].(gerrit.ChangesetCreatedEvent)
+							err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
+						default:
+							err = fmt.Errorf("unknown issue event type '%s'", k)
+						}
+						if err != nil {
+							break
+						}
+					}
+				} else {
+					jsonBytes, err = jsoniter.Marshal(reviewsData)
+				}
+			}
 			if err != nil {
 				shared.Printf("Error: %+v\n", err)
 				return
 			}
-			shared.Printf("%s\n", string(jsonBytes))
+			if j.Publisher == nil {
+				shared.Printf("%s\n", string(jsonBytes))
+			}
 			*docs = []interface{}{}
 			gMaxUpstreamDtMtx.Lock()
 			defer gMaxUpstreamDtMtx.Unlock()
