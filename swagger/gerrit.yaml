@@ -29,7 +29,7 @@ definitions:
     properties:
       BackendName:
         type: string
-        example: insights-datasource-gerrit
+        example: insights-connector-gerrit
       BackendVersion:
         type: string
         example: v0.1.0
@@ -198,7 +198,7 @@ definitions:
         $ref: "#/definitions/CodeChangeRequest"
   Data:
     type: object
-    description: this is the final output of insights-datasource-gerrit, data source will output packs up to some fixed size, like 500 events pack at once
+    description: this is the final output of insights-connector-gerrit, data source will output packs up to some fixed size, like 500 events pack at once
     properties:
       DataSource:
         type: object
