@@ -1265,7 +1265,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 			}
 		}
 	}()
-	changesetID, repoID, userID := "", "", ""
+	changesetID, repoID, userID, patchsetID, approvalID := "", "", "", "", ""
 	source := GerritDataSource
 	for _, iDoc := range docs {
 		doc, _ := iDoc.(map[string]interface{})
@@ -1328,6 +1328,182 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 			}
 		}
 		// Changeset owner (author) ends
+		// Patchsets and approvals start
+		objAry, okObj := doc["patchset_array"].([]interface{})
+		if okObj {
+			for _, iObj := range objAry {
+				obj, okObj := iObj.(map[string]interface{})
+				if !okObj || obj == nil {
+					continue
+				}
+				objType, _ := obj["type"].(string)
+				roles, okRoles := obj["roles"].([]map[string]interface{})
+				if objType == "patchset" {
+					// patchset start
+					sha, _ := obj["patchset_revision"].(string)
+					if !okRoles || sha == "" || len(roles) == 0 {
+						continue
+					}
+					patchsetCreatedOn, _ := obj["patchset_created_on"].(time.Time)
+					if patchsetCreatedOn.After(updatedOn) {
+						updatedOn = patchsetCreatedOn
+					}
+					patchsetContributors := []insights.Contributor{}
+					for _, role := range roles {
+						roleType, _ := role["role"].(string)
+						name, _ := role["name"].(string)
+						username, _ := role["username"].(string)
+						email, _ := role["email"].(string)
+						// No identity data postprocessing in V2
+						// name, username = shared.PostprocessNameUsername(name, username, email)
+						// possible roles: author, uploader
+						roleValue := insights.AuthorRole
+						if roleType == "uploader" {
+							// FIXME: V1 mapped "uploader" as a "committer" - is this OK or should we create insights.UploaderRole? LG: for me this is OK.
+							roleValue = insights.CommitterRole
+						}
+						userID, err = user.GenerateIdentity(&source, &email, &name, &username)
+						if err != nil {
+							shared.Printf("GenerateIdentity(%s,%s,%s,%s): %+v for %+v\n", source, email, name, username, err, doc)
+							return
+						}
+						contributor := insights.Contributor{
+							Role:   roleValue,
+							Weight: 1.0,
+							Identity: user.UserIdentityObjectBase{
+								ID:         userID,
+								Email:      email,
+								IsVerified: false,
+								Name:       name,
+								Username:   username,
+								Source:     source,
+							},
+						}
+						patchsetContributors = append(patchsetContributors, contributor)
+						// If we want to add patchset contributors to changeset object
+						// contributors = append(contributors, contributor)
+					}
+					fNumber, _ := obj["patchset_number"].(float64)
+					number := fmt.Sprintf("%.0f", fNumber)
+					ref, _ := obj["patchset_ref"].(string)
+					patchsetSID := number + ":" + ref
+					patchsetID, err = gerrit.GenerateGerritPatchsetID(changesetID, patchsetSID)
+					// shared.Printf("gerrit.GenerateGerritPatchsetID(%s,%s) -> %s\n", changesetID, patchsetSID, patchsetID)
+					if err != nil {
+						shared.Printf("gerrit.GenerateGerritPatchsetID(%s,%s): %+v for %+v\n", changesetID, patchsetSID, err, doc)
+						return
+					}
+					patchset := gerrit.Patchset{
+						ID:              patchsetID,
+						PatchsetID:      patchsetSID,
+						ChangesetID:     changesetID,
+						CommitSHA:       sha,
+						Contributors:    patchsetContributors,
+						SyncTimestamp:   time.Now(),
+						SourceTimestamp: patchsetCreatedOn,
+						// FIXME we don't have anything more useful, patchset "obj" also has "summary" but this is also a copy from the parent changeset
+						Body: csetSummary,
+					}
+					key := "patchset_added"
+					ary, ok := data[key]
+					if !ok {
+						ary = []interface{}{patchset}
+					} else {
+						ary = append(ary, patchset)
+					}
+					data[key] = ary
+					// patchset end
+				} else {
+					// approval start
+					sReviewBody, _ := obj["approval_description"].(string)
+					//sCommitID, _ := obj["patchset_revision"].(string)
+					sReviewState, _ := obj["approval_value"].(string)
+					reviewState := int64(0)
+					if sReviewState != "" {
+						var e error
+						reviewState, e = strconv.ParseInt(sReviewState, 10, 64)
+						if e != nil {
+							shared.Printf("WARNING: invalid review state: '%s' in %+v, assuming value 0\n", sReviewState, obj)
+						}
+					} else {
+						shared.Printf("WARNING: empty review state in %+v, assuming value 0\n", obj)
+					}
+					reviewCreatedOn, _ := obj["approval_granted_on"].(time.Time)
+					if reviewCreatedOn.After(updatedOn) {
+						updatedOn = reviewCreatedOn
+					}
+					// isApproval := reviewState >= 0
+					approvalSID, _ := obj["id"].(string)
+					// We need to calculate patsetID for an approval
+					fNumber, _ := obj["patchset_number"].(float64)
+					number := fmt.Sprintf("%.0f", fNumber)
+					ref, _ := obj["patchset_ref"].(string)
+					patchsetSID := number + ":" + ref
+					patchsetID, err = gerrit.GenerateGerritPatchsetID(changesetID, patchsetSID)
+					// shared.Printf("in approval gerrit.GenerateGerritPatchsetID(%s,%s) -> %s\n", changesetID, patchsetSID, patchsetID)
+					if err != nil {
+						shared.Printf("gerrit.GenerateGerritPatchsetID(%s,%s): %+v for %+v\n", changesetID, patchsetSID, err, doc)
+						return
+					}
+					for _, role := range roles {
+						roleType, _ := role["role"].(string)
+						if roleType != "by" {
+							continue
+						}
+						name, _ := role["name"].(string)
+						username, _ := role["username"].(string)
+						email, _ := role["email"].(string)
+						// No identity data postprocessing in V2
+						// name, username = shared.PostprocessNameUsername(name, username, email)
+						userID, err = user.GenerateIdentity(&source, &email, &name, &username)
+						if err != nil {
+							shared.Printf("GenerateIdentity(%s,%s,%s,%s): %+v for %+v\n", source, email, name, username, err, doc)
+							return
+						}
+						contributor := insights.Contributor{
+							Role:   insights.ApproverRole,
+							Weight: 1.0,
+							Identity: user.UserIdentityObjectBase{
+								ID:         userID,
+								Email:      email,
+								IsVerified: false,
+								Name:       name,
+								Username:   username,
+								Source:     source,
+							},
+						}
+						approvalID, err = gerrit.GenerateGerritApprovalID(patchsetID, approvalSID)
+						// shared.Printf("gerrit.GenerateGerritApprovalID(%s,%s) -> %s\n", patchsetID, approvalSID, approvalID)
+						if err != nil {
+							shared.Printf("gerrit.GenerateGerritApprovalID(%s,%s): %+v for %+v\n", patchsetID, approvalSID, err, doc)
+							return
+						}
+						// If we want to add approver as a contributor on the changeset object
+						// contributors = append(contributors, contributor)
+						approval := gerrit.Approval{
+							ID:              approvalID,
+							PatchsetID:      patchsetID,
+							ApprovalID:      approvalSID,
+							Body:            sReviewBody,
+							Contributor:     contributor,
+							State:           fmt.Sprintf("%d", reviewState),
+							SyncTimestamp:   time.Now(),
+							SourceTimestamp: reviewCreatedOn,
+						}
+						key := "approval_added"
+						ary, ok := data[key]
+						if !ok {
+							ary = []interface{}{approval}
+						} else {
+							ary = append(ary, approval)
+						}
+						data[key] = ary
+						// approval end
+					}
+				}
+			}
+		}
+		// patchsets and approvals end
 		// shared.Printf("(repo,repourl,cseturl,summary,siid,closed,merged)=('%s','%s','%s','%s','%s',(%v,%v),(%v,%v))\n", csetRepo, repoURL, csetURL, csetSummary, sIID, isClosed, closedOn, isMerged, mergedOn)
 		// Final changeset object
 		changeset := gerrit.Changeset{
@@ -1392,120 +1568,6 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 	/*
 		for _, iDoc := range docs {
 			commits := []*models.CodeChangeRequestCommit{}
-			objAry, okObj := doc["patchset_array"].([]interface{})
-			if okObj {
-				for _, iObj := range objAry {
-					obj, okObj := iObj.(map[string]interface{})
-					if !okObj || obj == nil {
-						continue
-					}
-					objType, _ := obj["type"].(string)
-					roles, okRoles := obj["roles"].([]map[string]interface{})
-					if objType == "patchset" {
-						sha, _ := obj["patchset_revision"].(string)
-						if !okRoles || sha == "" || len(roles) == 0 {
-							continue
-						}
-						patchsetCreatedOn, _ := obj["patchset_created_on"].(time.Time)
-						var (
-							author    *models.Identity
-							committer *models.Identity
-						)
-						if patchsetCreatedOn.After(updatedOn) {
-							updatedOn = patchsetCreatedOn
-						}
-						for _, role := range roles {
-							roleType, _ := role["role"].(string)
-							name, _ := role["name"].(string)
-							username, _ := role["username"].(string)
-							email, _ := role["email"].(string)
-							name, username = shared.PostprocessNameUsername(name, username, email)
-							userUUID := shared.UUIDAffs(ctx, source, email, name, username)
-							identity := &models.Identity{
-								ID:           userUUID,
-								DataSourceID: source,
-								Name:         name,
-								Username:     username,
-								Email:        email,
-							}
-							if roleType == "author" {
-								author = identity
-							} else if roleType == "uploader" {
-								committer = identity
-							}
-						}
-						commits = append(commits, &models.CodeChangeRequestCommit{
-							SHA:       sha,
-							Author:    author,
-							Committer: committer,
-							Dt:        strfmt.DateTime(patchsetCreatedOn),
-						})
-					} else {
-						var (
-							reviewBody   *string
-							commitID     *string
-							reviewState  *int64
-							iReviewState int64
-						)
-						actType := "gerrit_approval_added"
-						sReviewBody, _ := obj["approval_description"].(string)
-						if sReviewBody != "" {
-							reviewBody = &sReviewBody
-						}
-						sCommitID, _ := obj["patchset_revision"].(string)
-						if sCommitID != "" {
-							commitID = &sCommitID
-						}
-						sReviewState, _ := obj["approval_value"].(string)
-						if sReviewState != "" {
-							var err error
-							iReviewState, err = strconv.ParseInt(sReviewState, 10, 64)
-							if err != nil {
-								continue
-							}
-							reviewState = &iReviewState
-						}
-						reviewCreatedOn, _ := obj["approval_granted_on"].(time.Time)
-						sReviewID, _ := obj["id"].(string)
-						if reviewCreatedOn.After(updatedOn) {
-							updatedOn = reviewCreatedOn
-						}
-						isApproval := iReviewState >= 0
-						for _, role := range roles {
-							roleType, _ := role["role"].(string)
-							if roleType != "by" {
-								continue
-							}
-							name, _ := role["name"].(string)
-							username, _ := role["username"].(string)
-							email, _ := role["email"].(string)
-							name, username = shared.PostprocessNameUsername(name, username, email)
-							userUUID := shared.UUIDAffs(ctx, source, email, name, username)
-							identity := &models.Identity{
-								ID:           userUUID,
-								DataSourceID: source,
-								Name:         name,
-								Username:     username,
-								Email:        email,
-							}
-							actUUID := shared.UUIDNonEmpty(ctx, docUUID, actType, sReviewID)
-							activities = append(activities, &models.CodeChangeRequestActivity{
-								ID:                   actUUID,
-								CodeChangeRequestKey: docUUID,
-								CodeChangeRequestID:  csetHash,
-								ActivityType:         actType,
-								Identity:             identity,
-								CreatedAt:            strfmt.DateTime(reviewCreatedOn),
-								Key:                  &sReviewID,
-								Body:                 reviewBody,
-								CommitSHA:            commitID,
-								IsApproval:           &isApproval,
-								State:                reviewState,
-							})
-						}
-					}
-				}
-			}
 			commentsAry, okComments := doc["comments_array"].([]interface{})
 			if okComments {
 				actType := "gerrit_comment_added"
