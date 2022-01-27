@@ -137,19 +137,17 @@ func (j *DSGerrit) AddLogger(ctx *shared.Ctx) {
 }
 
 // WriteLog - writes to log
-func (j *DSGerrit) WriteLog(ctx *shared.Ctx, status, message string) {
+func (j *DSGerrit) WriteLog(ctx *shared.Ctx, timestamp time.Time, status, message string) {
 	_ = j.Logger.Write(&logger.Log{
 		Connector: GerritDataSource,
 		Configuration: []map[string]string{
 			{
 				"GERRIT_URL":     j.URL,
 				"GERRIT_PROJECT": ctx.Project,
-				// "ES_URL":         ctx.ESURL,
 				"ProjectSlug": ctx.Project,
 			}},
 		Status:    status,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		CreatedAt: timestamp,
 		Message:   message,
 	})
 }
@@ -2122,9 +2120,13 @@ func main() {
 		shared.Printf("Error: %+v\n", err)
 		return
 	}
+	timestamp := time.Now()
+	gerrit.WriteLog(&ctx, timestamp, logger.InProgress, "")
 	err = gerrit.Sync(&ctx)
 	if err != nil {
 		shared.Printf("Error: %+v\n", err)
+		gerrit.WriteLog(&ctx, timestamp, logger.Failed, err.Error())
 		return
 	}
+	gerrit.WriteLog(&ctx, timestamp, logger.Done, "")
 }
