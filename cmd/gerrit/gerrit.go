@@ -16,6 +16,7 @@ import (
 	"github.com/LF-Engineering/lfx-event-schema/service"
 	"github.com/LF-Engineering/lfx-event-schema/service/insights"
 	"github.com/LF-Engineering/lfx-event-schema/service/insights/gerrit"
+	"github.com/LF-Engineering/lfx-event-schema/service/repository"
 	"github.com/LF-Engineering/lfx-event-schema/utils/datalake"
 
 	shared "github.com/LF-Engineering/insights-datasource-shared"
@@ -1100,15 +1101,6 @@ func (j *DSGerrit) EnrichComments(ctx *shared.Ctx, review map[string]interface{}
 
 // GetModelData - return data in lfx-event-schema format
 func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[string][]interface{}, err error) {
-	/*
-	   gerrit.ChangesetCreatedEvent{},
-	   gerrit.ChangesetCommentAddedEvent{},
-	   gerrit.ChangesetCommentEditedEvent{},
-	   gerrit.PatchsetAddedEvent{},
-	   gerrit.PatchsetRemovedEvent{},
-	   gerrit.ApprovalAddedEvent{},
-	   gerrit.ApprovalRemovedEvent{},
-	*/
 	data = make(map[string][]interface{})
 	defer func() {
 		if err != nil {
@@ -1218,9 +1210,72 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 			}
 		}
 	}()
+	changesetID, repoID := "", ""
+	for _, iDoc := range docs {
+		doc, _ := iDoc.(map[string]interface{})
+		// FIXME: this is gerrit project
+		csetRepo, _ := doc["repository"].(string)
+		csetHash, _ := doc["githash"].(string)
+		csetNumber, _ := doc["changeset_number"].(float64)
+		sCsetNumber := fmt.Sprintf("%.0f", csetNumber)
+		sIID := sCsetNumber + ":" + csetHash
+		repoID, err = repository.GenerateRepositoryID(csetRepo, j.URL, GerritDataSource)
+		// FIXME remove
+		shared.Printf("GenerateRepositoryID(%s,%s,%s) -> %s", csetRepo, j.URL, GerritDataSource, repoID)
+		if err != nil {
+			shared.Printf("GenerateRepositoryID(%s,%s,%s): %+v for %+v", csetRepo, j.URL, GerritDataSource, err, doc)
+			return
+		}
+		changesetID, err = gerrit.GenerateGerritChangesetID(repoID, sIID)
+		// FIXME remove
+		shared.Printf("gerrit.GenerateGerritChangesetID(%s,%s) -> %s", repoID, sIID, changesetID)
+		if err != nil {
+			shared.Printf("gerrit.GenerateGerritChangesetID(%s,%s): %+v for %+v", repoID, sIID, err, doc)
+			return
+		}
+		// FIXME: this is changeset's URL - need to convert this to whatever artificial gerrit repo URL is supposed to be
+		csetURL, _ := doc["url"].(string)
+		csetSummary, _ := doc["summary"].(string)
+		csetStatus, _ := doc["changeset_status"].(string)
+		lowerStatus := strings.ToLower(csetStatus)
+		lines := strings.Split(csetSummary, "\n")
+		title := lines[0]
+		createdOn, _ := doc["opened"].(time.Time)
+		updatedOn, _ := doc["metadata__updated_on"].(time.Time)
+		contributors := []insights.Contributor{}
+		// Final changeset object
+		changeset := gerrit.Changeset{
+			ID:            changesetID,
+			RepositoryID:  repoID,
+			RepositoryURL: csetURL,
+			Contributors:  contributors,
+			ChangeRequest: insights.ChangeRequest{
+				Title:            title,
+				Body:             csetSummary,
+				ChangeRequestID:  sIID,
+				ChangeRequestURL: csetURL,
+				State:            insights.ChangeRequestState(lowerStatus),
+				SyncTimestamp:    time.Now(),
+				SourceTimestamp:  createdOn,
+				Orphaned:         false,
+			},
+		}
+		key := "changeset_created"
+		ary, ok := data[key]
+		if !ok {
+			ary = []interface{}{changeset}
+		} else {
+			ary = append(ary, changeset)
+		}
+		data[key] = ary
+		gMaxUpstreamDtMtx.Lock()
+		if updatedOn.After(gMaxUpstreamDt) {
+			gMaxUpstreamDt = updatedOn
+		}
+		gMaxUpstreamDtMtx.Unlock()
+	}
 	return
 	/*
-		source := data.DataSource.Slug
 		for _, iDoc := range docs {
 			var (
 				pClosedOn *strfmt.DateTime
