@@ -17,6 +17,7 @@ import (
 	"github.com/LF-Engineering/lfx-event-schema/service/insights"
 	"github.com/LF-Engineering/lfx-event-schema/service/insights/gerrit"
 	"github.com/LF-Engineering/lfx-event-schema/service/repository"
+	"github.com/LF-Engineering/lfx-event-schema/service/user"
 	"github.com/LF-Engineering/lfx-event-schema/utils/datalake"
 
 	shared "github.com/LF-Engineering/insights-datasource-shared"
@@ -1264,7 +1265,8 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 			}
 		}
 	}()
-	changesetID, repoID := "", ""
+	changesetID, repoID, userID := "", "", ""
+	source := GerritDataSource
 	for _, iDoc := range docs {
 		doc, _ := iDoc.(map[string]interface{})
 		csetRepo, _ := doc["repository"].(string)
@@ -1296,6 +1298,36 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 		closedOn, isClosed := doc["closed"].(time.Time)
 		mergedOn, isMerged := doc["merged"].(time.Time)
 		contributors := []insights.Contributor{}
+		// Changeset owner (author) starts
+		roles, okRoles := doc["roles"].([]map[string]interface{})
+		if okRoles {
+			for _, role := range roles {
+				name, _ := role["name"].(string)
+				username, _ := role["username"].(string)
+				email, _ := role["email"].(string)
+				// No identity data postprocessing in V2
+				// name, username = shared.PostprocessNameUsername(name, username, email)
+				userID, err = user.GenerateIdentity(&source, &email, &name, &username)
+				if err != nil {
+					shared.Printf("GenerateIdentity(%s,%s,%s,%s): %+v for %+v\n", source, email, name, username, err, doc)
+					return
+				}
+				contributor := insights.Contributor{
+					Role:   insights.AuthorRole,
+					Weight: 1.0,
+					Identity: user.UserIdentityObjectBase{
+						ID:         userID,
+						Email:      email,
+						IsVerified: false,
+						Name:       name,
+						Username:   username,
+						Source:     source,
+					},
+				}
+				contributors = append(contributors, contributor)
+			}
+		}
+		// Changeset owner (author) ends
 		// shared.Printf("(repo,repourl,cseturl,summary,siid,closed,merged)=('%s','%s','%s','%s','%s',(%v,%v),(%v,%v))\n", csetRepo, repoURL, csetURL, csetSummary, sIID, isClosed, closedOn, isMerged, mergedOn)
 		// Final changeset object
 		changeset := gerrit.Changeset{
@@ -1359,45 +1391,6 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 	return
 	/*
 		for _, iDoc := range docs {
-			activities := []*models.CodeChangeRequestActivity{}
-			roles, okRoles := doc["roles"].([]map[string]interface{})
-			if okRoles {
-				for _, role := range roles {
-					var (
-						body *string
-						url  *string
-					)
-					actType := "gerrit_changeset_created"
-					if csetSummary != "" {
-						body = &csetSummary
-					}
-					url = &csetURL
-					name, _ := role["name"].(string)
-					username, _ := role["username"].(string)
-					email, _ := role["email"].(string)
-					name, username = shared.PostprocessNameUsername(name, username, email)
-					userUUID := shared.UUIDAffs(ctx, source, email, name, username)
-					identity := &models.Identity{
-						ID:           userUUID,
-						DataSourceID: source,
-						Name:         name,
-						Username:     username,
-						Email:        email,
-					}
-					actUUID := shared.UUIDNonEmpty(ctx, docUUID, actType)
-					activities = append(activities, &models.CodeChangeRequestActivity{
-						ID:                   actUUID,
-						CodeChangeRequestKey: docUUID,
-						CodeChangeRequestID:  csetHash,
-						ActivityType:         actType,
-						Body:                 body,
-						Identity:             identity,
-						CreatedAt:            strfmt.DateTime(createdOn),
-						Key:                  &sCsetNumber,
-						URL:                  url,
-					})
-				}
-			}
 			commits := []*models.CodeChangeRequestCommit{}
 			objAry, okObj := doc["patchset_array"].([]interface{})
 			if okObj {
