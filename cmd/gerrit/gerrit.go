@@ -1265,7 +1265,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 			}
 		}
 	}()
-	changesetID, repoID, userID, patchsetID, approvalID := "", "", "", "", ""
+	changesetID, repoID, userID, patchsetID, approvalID, commentID := "", "", "", "", "", ""
 	source := GerritDataSource
 	for _, iDoc := range docs {
 		doc, _ := iDoc.(map[string]interface{})
@@ -1432,7 +1432,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 					if reviewCreatedOn.After(updatedOn) {
 						updatedOn = reviewCreatedOn
 					}
-					// isApproval := reviewState >= 0
+					isApproved := reviewState >= 0
 					approvalSID, _ := obj["id"].(string)
 					// We need to calculate patsetID for an approval
 					fNumber, _ := obj["patchset_number"].(float64)
@@ -1460,8 +1460,12 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 							shared.Printf("GenerateIdentity(%s,%s,%s,%s): %+v for %+v\n", source, email, name, username, err, doc)
 							return
 						}
+						role := insights.ReviewerRole
+						if isApproved {
+							role = insights.ApproverRole
+						}
 						contributor := insights.Contributor{
-							Role:   insights.ApproverRole,
+							Role:   role,
 							Weight: 1.0,
 							Identity: user.UserIdentityObjectBase{
 								ID:         userID,
@@ -1504,6 +1508,85 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 			}
 		}
 		// patchsets and approvals end
+		// comments start
+		commentsAry, okComments := doc["comments_array"].([]interface{})
+		if okComments {
+			for _, iComment := range commentsAry {
+				comment, okComment := iComment.(map[string]interface{})
+				if !okComment || comment == nil {
+					continue
+				}
+				roles, okRoles := comment["roles"].([]map[string]interface{})
+				if !okRoles || len(roles) == 0 {
+					continue
+				}
+				sCommentBody, _ := comment["comment_message"].(string)
+				commentCreatedOn, _ := comment["comment_created_on"].(time.Time)
+				sCommentID, _ := comment["id"].(string)
+				if commentCreatedOn.After(updatedOn) {
+					updatedOn = commentCreatedOn
+				}
+				for _, role := range roles {
+					roleType, _ := role["role"].(string)
+					if roleType != "reviewer" {
+						continue
+					}
+					name, _ := role["name"].(string)
+					username, _ := role["username"].(string)
+					email, _ := role["email"].(string)
+					// No identity data postprocessing in V2
+					//name, username = shared.PostprocessNameUsername(name, username, email)
+					userID, err = user.GenerateIdentity(&source, &email, &name, &username)
+					if err != nil {
+						shared.Printf("GenerateIdentity(%s,%s,%s,%s): %+v for %+v\n", source, email, name, username, err, doc)
+						return
+					}
+					contributor := insights.Contributor{
+						Role:   insights.CommenterRole,
+						Weight: 1.0,
+						Identity: user.UserIdentityObjectBase{
+							ID:         userID,
+							Email:      email,
+							IsVerified: false,
+							Name:       name,
+							Username:   username,
+							Source:     source,
+						},
+					}
+					commentID, err = gerrit.GenerateGerritChangesetCommentID(repoID, sCommentID)
+					// shared.Printf("gerrit.GenerateGerritChangesetCommentID(%s,%s) -> %s\n", repoID, sCommentID, commentID)
+					if err != nil {
+						shared.Printf("gerrit.GenerateGerritChangesetCommentID(%s,%s): %+v for %+v\n", repoID, sCommentID, err, doc)
+						return
+					}
+					// If we want to add comments as a contributor on the changeset object
+					// contributors = append(contributors, contributor)
+					comment := gerrit.ChangesetComment{
+						ID:          commentID,
+						ChangesetID: changesetID,
+						Comment: insights.Comment{
+							Body: sCommentBody,
+							// FIXME: we don't have anything else
+							CommentURL:      csetURL,
+							SourceTimestamp: commentCreatedOn,
+							SyncTimestamp:   time.Now(),
+							CommentID:       sCommentID,
+							Contributor:     contributor,
+							Orphaned:        false,
+						},
+					}
+					key := "comment_added"
+					ary, ok := data[key]
+					if !ok {
+						ary = []interface{}{comment}
+					} else {
+						ary = append(ary, comment)
+					}
+					data[key] = ary
+				}
+			}
+		}
+		// comments end
 		// shared.Printf("(repo,repourl,cseturl,summary,siid,closed,merged)=('%s','%s','%s','%s','%s',(%v,%v),(%v,%v))\n", csetRepo, repoURL, csetURL, csetSummary, sIID, isClosed, closedOn, isMerged, mergedOn)
 		// Final changeset object
 		changeset := gerrit.Changeset{
@@ -1565,89 +1648,6 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 		gMaxUpstreamDtMtx.Unlock()
 	}
 	return
-	/*
-		for _, iDoc := range docs {
-			commits := []*models.CodeChangeRequestCommit{}
-			commentsAry, okComments := doc["comments_array"].([]interface{})
-			if okComments {
-				actType := "gerrit_comment_added"
-				for _, iComment := range commentsAry {
-					comment, okComment := iComment.(map[string]interface{})
-					if !okComment || comment == nil {
-						continue
-					}
-					roles, okRoles := comment["roles"].([]map[string]interface{})
-					if !okRoles || len(roles) == 0 {
-						continue
-					}
-					var commentBody *string
-					sCommentBody, _ := comment["comment_message"].(string)
-					if sCommentBody != "" {
-						commentBody = &sCommentBody
-					}
-					commentCreatedOn, _ := comment["comment_created_on"].(time.Time)
-					sCommentID, _ := comment["id"].(string)
-					if commentCreatedOn.After(updatedOn) {
-						updatedOn = commentCreatedOn
-					}
-					for _, role := range roles {
-						roleType, _ := role["role"].(string)
-						if roleType != "reviewer" {
-							continue
-						}
-						name, _ := role["name"].(string)
-						username, _ := role["username"].(string)
-						email, _ := role["email"].(string)
-						name, username = shared.PostprocessNameUsername(name, username, email)
-						userUUID := shared.UUIDAffs(ctx, source, email, name, username)
-						identity := &models.Identity{
-							ID:           userUUID,
-							DataSourceID: source,
-							Name:         name,
-							Username:     username,
-							Email:        email,
-						}
-						actUUID := shared.UUIDNonEmpty(ctx, docUUID, actType, sCommentID)
-						activities = append(activities, &models.CodeChangeRequestActivity{
-							ID:                   actUUID,
-							CodeChangeRequestKey: docUUID,
-							CodeChangeRequestID:  csetHash,
-							ActivityType:         actType,
-							Identity:             identity,
-							CreatedAt:            strfmt.DateTime(commentCreatedOn),
-							Key:                  &sCommentID,
-							Body:                 commentBody,
-						})
-					}
-				}
-			}
-			// Event
-			event := &models.Event{
-				CodeChangeRequest: &models.CodeChangeRequest{
-					ID:                      docUUID,
-					DataSourceID:            source,
-					CodeChangeRequestID:     csetHash,
-					CodeChangeRequestNumber: sCsetNumber,
-					CreatedAt:               strfmt.DateTime(createdOn),
-					UpdatedAt:               strfmt.DateTime(updatedOn),
-					ClosedAt:                pClosedOn,
-					IsClosed:                closedOK,
-					MergedAt:                pMergedOn,
-					IsMerged:                mergedOK,
-					Title:                   csetSummary,
-					State:                   csetStatus,
-					Commits:                 commits,
-					Activities:              activities,
-				},
-			}
-			data.Events = append(data.Events, event)
-			gMaxUpstreamDtMtx.Lock()
-			if updatedOn.After(gMaxUpstreamDt) {
-				gMaxUpstreamDt = updatedOn
-			}
-			gMaxUpstreamDtMtx.Unlock()
-		}
-	*/
 }
 
 // GerritEnrichItems - iterate items and enrich them
@@ -1674,22 +1674,22 @@ func (j *DSGerrit) GerritEnrichItems(ctx *shared.Ctx, thrN int, items []interfac
 						switch k {
 						case "changeset_created":
 							ev, _ := v[0].(gerrit.ChangesetCreatedEvent)
-							err = j.PublisherPushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
+							err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
 						case "changeset_merged":
 							ev, _ := v[0].(gerrit.ChangesetMergedEvent)
-							err = j.PublisherPushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
+							err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
 						case "changeset_closed":
 							ev, _ := v[0].(gerrit.ChangesetClosedEvent)
-							err = j.PublisherPushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
+							err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
 						case "comment_added":
 							ev, _ := v[0].(gerrit.ChangesetCommentAddedEvent)
-							err = j.PublisherPushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
+							err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
 						case "approval_added":
 							ev, _ := v[0].(gerrit.ApprovalAddedEvent)
-							err = j.PublisherPushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
+							err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
 						case "patchset_added":
 							ev, _ := v[0].(gerrit.PatchsetAddedEvent)
-							err = j.PublisherPushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
+							err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
 						default:
 							err = fmt.Errorf("unknown event type '%s'", k)
 						}
