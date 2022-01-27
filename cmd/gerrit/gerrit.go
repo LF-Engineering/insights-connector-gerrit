@@ -1106,6 +1106,15 @@ func (j *DSGerrit) EnrichComments(ctx *shared.Ctx, review map[string]interface{}
 	return
 }
 
+// GetProjectRepoURL - return gerrit repository URL for a given project
+func (j *DSGerrit) GetProjectRepoURL(project string) string {
+	// FIXME: based on Fayaz comment, we probably need to catch more cases in different Gerrit instances
+	if !strings.Contains(j.URL, "://") {
+		return "https://" + j.URL + "/r/admin/repos/" + project
+	}
+	return j.URL + "/r/admin/repos/" + project
+}
+
 // GetModelData - return data in lfx-event-schema format
 func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[string][]interface{}, err error) {
 	data = make(map[string][]interface{})
@@ -1258,28 +1267,25 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 	changesetID, repoID := "", ""
 	for _, iDoc := range docs {
 		doc, _ := iDoc.(map[string]interface{})
-		// FIXME: this is gerrit project
 		csetRepo, _ := doc["repository"].(string)
 		csetHash, _ := doc["githash"].(string)
 		csetNumber, _ := doc["changeset_number"].(float64)
 		sCsetNumber := fmt.Sprintf("%.0f", csetNumber)
 		sIID := sCsetNumber + ":" + csetHash
 		repoID, err = repository.GenerateRepositoryID(csetRepo, j.URL, GerritDataSource)
-		// FIXME remove
-		shared.Printf("GenerateRepositoryID(%s,%s,%s) -> %s", csetRepo, j.URL, GerritDataSource, repoID)
+		// shared.Printf("GenerateRepositoryID(%s,%s,%s) -> %s\n", csetRepo, j.URL, GerritDataSource, repoID)
 		if err != nil {
-			shared.Printf("GenerateRepositoryID(%s,%s,%s): %+v for %+v", csetRepo, j.URL, GerritDataSource, err, doc)
+			shared.Printf("GenerateRepositoryID(%s,%s,%s): %+v for %+v\n", csetRepo, j.URL, GerritDataSource, err, doc)
 			return
 		}
 		changesetID, err = gerrit.GenerateGerritChangesetID(repoID, sIID)
-		// FIXME remove
-		shared.Printf("gerrit.GenerateGerritChangesetID(%s,%s) -> %s", repoID, sIID, changesetID)
+		// shared.Printf("gerrit.GenerateGerritChangesetID(%s,%s) -> %s\n", repoID, sIID, changesetID)
 		if err != nil {
-			shared.Printf("gerrit.GenerateGerritChangesetID(%s,%s): %+v for %+v", repoID, sIID, err, doc)
+			shared.Printf("gerrit.GenerateGerritChangesetID(%s,%s): %+v for %+v\n", repoID, sIID, err, doc)
 			return
 		}
-		// FIXME: this is changeset's URL - need to convert this to whatever artificial gerrit repo URL is supposed to be
 		csetURL, _ := doc["url"].(string)
+		repoURL := j.GetProjectRepoURL(csetRepo)
 		csetSummary, _ := doc["summary"].(string)
 		csetStatus, _ := doc["changeset_status"].(string)
 		lowerStatus := strings.ToLower(csetStatus)
@@ -1290,11 +1296,12 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 		closedOn, isClosed := doc["closed"].(time.Time)
 		mergedOn, isMerged := doc["merged"].(time.Time)
 		contributors := []insights.Contributor{}
+		// shared.Printf("(repo,repourl,cseturl,summary,siid,closed,merged)=('%s','%s','%s','%s','%s',(%v,%v),(%v,%v))\n", csetRepo, repoURL, csetURL, csetSummary, sIID, isClosed, closedOn, isMerged, mergedOn)
 		// Final changeset object
 		changeset := gerrit.Changeset{
 			ID:            changesetID,
 			RepositoryID:  repoID,
-			RepositoryURL: csetURL,
+			RepositoryURL: repoURL,
 			Contributors:  contributors,
 			ChangeRequest: insights.ChangeRequest{
 				Title:            title,
