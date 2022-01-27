@@ -42,7 +42,7 @@ const (
 	GerritCodeReviewApprovalType = "Code-Review"
 	// GerritDataSource - constant for gerrit source
 	GerritDataSource = "gerrit"
-	// GerritDefaultStream - Stream To Publish issues
+	// GerritDefaultStream - Stream To Publish reviews
 	GerritDefaultStream = "PUT-S3-gerrit"
 	// GerritConnector ...
 	GerritConnector = "gerrit-connector"
@@ -1147,6 +1147,44 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 					})
 				}
 				data[k] = ary
+			case "changeset_merged":
+				baseEvent := service.BaseEvent{
+					Type: service.EventType(gerrit.ChangesetMergedEvent{}.Event()),
+					CRUDInfo: service.CRUDInfo{
+						CreatedBy: GerritConnector,
+						UpdatedBy: GerritConnector,
+						CreatedAt: time.Now().Unix(),
+						UpdatedAt: time.Now().Unix(),
+					},
+				}
+				ary := []interface{}{}
+				for _, changeset := range v {
+					ary = append(ary, gerrit.ChangesetMergedEvent{
+						ChangesetBaseEvent: changesetBaseEvent,
+						BaseEvent:          baseEvent,
+						Payload:            changeset.(gerrit.Changeset),
+					})
+				}
+				data[k] = ary
+			case "changeset_closed":
+				baseEvent := service.BaseEvent{
+					Type: service.EventType(gerrit.ChangesetClosedEvent{}.Event()),
+					CRUDInfo: service.CRUDInfo{
+						CreatedBy: GerritConnector,
+						UpdatedBy: GerritConnector,
+						CreatedAt: time.Now().Unix(),
+						UpdatedAt: time.Now().Unix(),
+					},
+				}
+				ary := []interface{}{}
+				for _, changeset := range v {
+					ary = append(ary, gerrit.ChangesetClosedEvent{
+						ChangesetBaseEvent: changesetBaseEvent,
+						BaseEvent:          baseEvent,
+						Payload:            changeset.(gerrit.Changeset),
+					})
+				}
+				data[k] = ary
 			case "comment_added":
 				baseEvent := service.BaseEvent{
 					Type: service.EventType(gerrit.ChangesetCommentAddedEvent{}.Event()),
@@ -1242,6 +1280,8 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 		title := lines[0]
 		createdOn, _ := doc["opened"].(time.Time)
 		updatedOn, _ := doc["metadata__updated_on"].(time.Time)
+		closedOn, isClosed := doc["closed"].(time.Time)
+		mergedOn, isMerged := doc["merged"].(time.Time)
 		contributors := []insights.Contributor{}
 		// Final changeset object
 		changeset := gerrit.Changeset{
@@ -1268,6 +1308,34 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 			ary = append(ary, changeset)
 		}
 		data[key] = ary
+		// Fake merge "event"
+		if isMerged {
+			changeset.Contributors = []insights.Contributor{}
+			changeset.SyncTimestamp = time.Now()
+			changeset.SourceTimestamp = mergedOn
+			key := "changeset_merged"
+			ary, ok := data[key]
+			if !ok {
+				ary = []interface{}{changeset}
+			} else {
+				ary = append(ary, changeset)
+			}
+			data[key] = ary
+		}
+		// Fake "close" event (not merged and closed)
+		if isClosed && !isMerged {
+			changeset.Contributors = []insights.Contributor{}
+			changeset.SyncTimestamp = time.Now()
+			changeset.SourceTimestamp = closedOn
+			key := "changeset_closed"
+			ary, ok := data[key]
+			if !ok {
+				ary = []interface{}{changeset}
+			} else {
+				ary = append(ary, changeset)
+			}
+			data[key] = ary
+		}
 		gMaxUpstreamDtMtx.Lock()
 		if updatedOn.After(gMaxUpstreamDt) {
 			gMaxUpstreamDt = updatedOn
@@ -1277,30 +1345,6 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 	return
 	/*
 		for _, iDoc := range docs {
-			var (
-				pClosedOn *strfmt.DateTime
-				pMergedOn *strfmt.DateTime
-			)
-			doc, _ := iDoc.(map[string]interface{})
-			docUUID, _ := doc["uuid"].(string)
-			csetHash, _ := doc["githash"].(string)
-			csetSummary, _ := doc["summary"].(string)
-			csetStatus, _ := doc["status"].(string)
-			csetNumber, _ := doc["changeset_number"].(float64)
-			sCsetNumber := fmt.Sprintf("%.0f", csetNumber)
-			csetURL, _ := doc["url"].(string)
-			createdOn, _ := doc["opened"].(time.Time)
-			updatedOn, _ := doc["metadata__updated_on"].(time.Time)
-			closedOn, closedOK := doc["closed"].(time.Time)
-			if closedOK {
-				tClosedOn := strfmt.DateTime(closedOn)
-				pClosedOn = &tClosedOn
-			}
-			mergedOn, mergedOK := doc["merged"].(time.Time)
-			if mergedOK {
-				tMergedOn := strfmt.DateTime(mergedOn)
-				pMergedOn = &tMergedOn
-			}
 			activities := []*models.CodeChangeRequestActivity{}
 			roles, okRoles := doc["roles"].([]map[string]interface{})
 			if okRoles {
@@ -1562,6 +1606,12 @@ func (j *DSGerrit) GerritEnrichItems(ctx *shared.Ctx, thrN int, items []interfac
 						case "changeset_created":
 							ev, _ := v[0].(gerrit.ChangesetCreatedEvent)
 							err = j.PublisherPushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
+						case "changeset_merged":
+							ev, _ := v[0].(gerrit.ChangesetMergedEvent)
+							err = j.PublisherPushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
+						case "changeset_closed":
+							ev, _ := v[0].(gerrit.ChangesetClosedEvent)
+							err = j.PublisherPushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
 						case "comment_added":
 							ev, _ := v[0].(gerrit.ChangesetCommentAddedEvent)
 							err = j.PublisherPushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
@@ -1572,7 +1622,7 @@ func (j *DSGerrit) GerritEnrichItems(ctx *shared.Ctx, thrN int, items []interfac
 							ev, _ := v[0].(gerrit.PatchsetAddedEvent)
 							err = j.PublisherPushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
 						default:
-							err = fmt.Errorf("unknown issue event type '%s'", k)
+							err = fmt.Errorf("unknown event type '%s'", k)
 						}
 						if err != nil {
 							break
