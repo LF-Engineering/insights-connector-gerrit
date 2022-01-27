@@ -13,6 +13,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/LF-Engineering/lfx-event-schema/service"
+	"github.com/LF-Engineering/lfx-event-schema/service/insights"
 	"github.com/LF-Engineering/lfx-event-schema/service/insights/gerrit"
 	"github.com/LF-Engineering/lfx-event-schema/utils/datalake"
 
@@ -1098,6 +1100,52 @@ func (j *DSGerrit) EnrichComments(ctx *shared.Ctx, review map[string]interface{}
 
 // GetModelData - return data in lfx-event-schema format
 func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[string][]interface{}, err error) {
+	/*
+	   gerrit.ChangesetCreatedEvent{},
+	   gerrit.ChangesetCommentAddedEvent{},
+	   gerrit.ChangesetCommentEditedEvent{},
+	   gerrit.PatchsetAddedEvent{},
+	   gerrit.PatchsetRemovedEvent{},
+	   gerrit.ApprovalAddedEvent{},
+	   gerrit.ApprovalRemovedEvent{},
+	*/
+	data = make(map[string][]interface{})
+	defer func() {
+		if err != nil {
+			return
+		}
+		changesetBaseEvent := gerrit.ChangesetBaseEvent{
+			Connector:        insights.GerritConnector,
+			ConnectorVersion: GerritBackendVersion,
+			Source:           insights.GerritSource,
+		}
+		for k, v := range data {
+			switch k {
+			case "created":
+				baseEvent := service.BaseEvent{
+					Type: service.EventType(gerrit.ChangesetCreatedEvent{}.Event()),
+					CRUDInfo: service.CRUDInfo{
+						CreatedBy: GerritConnector,
+						UpdatedBy: GerritConnector,
+						CreatedAt: time.Now().Unix(),
+						UpdatedAt: time.Now().Unix(),
+					},
+				}
+				ary := []interface{}{}
+				for _, changeset := range v {
+					ary = append(ary, gerrit.ChangesetCreatedEvent{
+						ChangesetBaseEvent: changesetBaseEvent,
+						BaseEvent:          baseEvent,
+						Payload:            changeset.(gerrit.Changeset),
+					})
+				}
+				data[k] = ary
+			default:
+				err = fmt.Errorf("unknown changeset '%s' event", k)
+				return
+			}
+		}
+	}()
 	return
 	/*
 		data = &models.Data{
