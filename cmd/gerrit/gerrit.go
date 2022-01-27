@@ -1119,9 +1119,24 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 			ConnectorVersion: GerritBackendVersion,
 			Source:           insights.GerritSource,
 		}
+		changesetCommentBaseEvent := gerrit.ChangesetCommentBaseEvent{
+			Connector:        insights.GerritConnector,
+			ConnectorVersion: GerritBackendVersion,
+			Source:           insights.GerritSource,
+		}
+		approvalBaseEvent := gerrit.ApprovalBaseEvent{
+			Connector:        insights.GerritConnector,
+			ConnectorVersion: GerritBackendVersion,
+			Source:           insights.GerritSource,
+		}
+		patchsetBaseEvent := gerrit.PatchsetBaseEvent{
+			Connector:        insights.GerritConnector,
+			ConnectorVersion: GerritBackendVersion,
+			Source:           insights.GerritSource,
+		}
 		for k, v := range data {
 			switch k {
-			case "created":
+			case "changeset_created":
 				baseEvent := service.BaseEvent{
 					Type: service.EventType(gerrit.ChangesetCreatedEvent{}.Event()),
 					CRUDInfo: service.CRUDInfo{
@@ -1140,6 +1155,63 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 					})
 				}
 				data[k] = ary
+			case "comment_added":
+				baseEvent := service.BaseEvent{
+					Type: service.EventType(gerrit.ChangesetCommentAddedEvent{}.Event()),
+					CRUDInfo: service.CRUDInfo{
+						CreatedBy: GerritConnector,
+						UpdatedBy: GerritConnector,
+						CreatedAt: time.Now().Unix(),
+						UpdatedAt: time.Now().Unix(),
+					},
+				}
+				ary := []interface{}{}
+				for _, changesetComment := range v {
+					ary = append(ary, gerrit.ChangesetCommentAddedEvent{
+						ChangesetCommentBaseEvent: changesetCommentBaseEvent,
+						BaseEvent:                 baseEvent,
+						Payload:                   changesetComment.(gerrit.ChangesetComment),
+					})
+				}
+				data[k] = ary
+			case "approval_added":
+				baseEvent := service.BaseEvent{
+					Type: service.EventType(gerrit.ApprovalAddedEvent{}.Event()),
+					CRUDInfo: service.CRUDInfo{
+						CreatedBy: GerritConnector,
+						UpdatedBy: GerritConnector,
+						CreatedAt: time.Now().Unix(),
+						UpdatedAt: time.Now().Unix(),
+					},
+				}
+				ary := []interface{}{}
+				for _, approval := range v {
+					ary = append(ary, gerrit.ApprovalAddedEvent{
+						ApprovalBaseEvent: approvalBaseEvent,
+						BaseEvent:         baseEvent,
+						Payload:           approval.(gerrit.Approval),
+					})
+				}
+				data[k] = ary
+			case "patchset_added":
+				baseEvent := service.BaseEvent{
+					Type: service.EventType(gerrit.PatchsetAddedEvent{}.Event()),
+					CRUDInfo: service.CRUDInfo{
+						CreatedBy: GerritConnector,
+						UpdatedBy: GerritConnector,
+						CreatedAt: time.Now().Unix(),
+						UpdatedAt: time.Now().Unix(),
+					},
+				}
+				ary := []interface{}{}
+				for _, patchset := range v {
+					ary = append(ary, gerrit.PatchsetAddedEvent{
+						PatchsetBaseEvent: patchsetBaseEvent,
+						BaseEvent:         baseEvent,
+						Payload:           patchset.(gerrit.Patchset),
+					})
+				}
+				data[k] = ary
 			default:
 				err = fmt.Errorf("unknown changeset '%s' event", k)
 				return
@@ -1148,11 +1220,6 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 	}()
 	return
 	/*
-		data = &models.Data{
-			DataSource: GerritDataSource,
-			MetaData:   gGerritMetaData,
-			Endpoint:   j.URL,
-		}
 		source := data.DataSource.Slug
 		for _, iDoc := range docs {
 			var (
@@ -1437,9 +1504,18 @@ func (j *DSGerrit) GerritEnrichItems(ctx *shared.Ctx, thrN int, items []interfac
 					envStr := os.Getenv("STAGE")
 					for k, v := range reviewsData {
 						switch k {
-						case "created":
+						case "changeset_created":
 							ev, _ := v[0].(gerrit.ChangesetCreatedEvent)
-							err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
+							err = j.PublisherPushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
+						case "comment_added":
+							ev, _ := v[0].(gerrit.ChangesetCommentAddedEvent)
+							err = j.PublisherPushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
+						case "approval_added":
+							ev, _ := v[0].(gerrit.ApprovalAddedEvent)
+							err = j.PublisherPushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
+						case "patchset_added":
+							ev, _ := v[0].(gerrit.PatchsetAddedEvent)
+							err = j.PublisherPushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
 						default:
 							err = fmt.Errorf("unknown issue event type '%s'", k)
 						}
