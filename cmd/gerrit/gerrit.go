@@ -143,8 +143,8 @@ func (j *DSGerrit) WriteLog(ctx *shared.Ctx, status, message string) {
 			{
 				"GERRIT_URL":     j.URL,
 				"GERRIT_PROJECT": ctx.Project,
-				"ES_URL":         ctx.ESURL,
-				"ProjectSlug":    ctx.Project,
+				// "ES_URL":         ctx.ESURL,
+				"ProjectSlug": ctx.Project,
 			}},
 		Status:    status,
 		CreatedAt: time.Now(),
@@ -285,6 +285,7 @@ func (j *DSGerrit) InitGerrit(ctx *shared.Ctx) (err error) {
 	if j.DisableHostKeyCheck {
 		j.SSHOpts += "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "
 	}
+	path := ""
 	if j.SSHKey != "" {
 		var f *os.File
 		f, err = ioutil.TempFile("", "id_rsa")
@@ -305,10 +306,16 @@ func (j *DSGerrit) InitGerrit(ctx *shared.Ctx) (err error) {
 			return
 		}
 		j.SSHOpts += "-i " + j.SSHKeyTempPath + " "
+		path = j.SSHKeyTempPath
 	} else {
 		if j.SSHKeyPath != "" {
 			j.SSHOpts += "-i " + j.SSHKeyPath + " "
 		}
+		path = j.SSHKeyPath
+	}
+	if ctx.Debug > 1 {
+		content, err := ioutil.ReadFile(path)
+		fmt.Printf("File contents(path=%s,err=%v): %s\n", path, err, content)
 	}
 	if strings.HasSuffix(j.SSHOpts, " ") {
 		j.SSHOpts = j.SSHOpts[:len(j.SSHOpts)-1]

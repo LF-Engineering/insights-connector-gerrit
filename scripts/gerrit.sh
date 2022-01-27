@@ -22,4 +22,5 @@ export AWS_SECRET_ACCESS_KEY="`cat ./secrets/AWS_SECRET_ACCESS_KEY.${AWSENV}.sec
 # --gerrit-disable-host-key-check
 # --gerrit-ssh-port=29418
 # --gerrit-debug=0
-./gerrit --gerrit-es-url="`cat ./secrets/ES_URL.${ESENV}.secret`" --gerrit-stream='' $*
+#./gerrit --gerrit-es-url="`cat ./secrets/ES_URL.${ESENV}.secret`" --gerrit-stream='' $*
+./gerrit --gerrit-disable-host-key-check --gerrit-es-url="`cat ./secrets/ES_URL.${ESENV}.secret`" $*
