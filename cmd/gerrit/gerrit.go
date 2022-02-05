@@ -21,6 +21,7 @@ import (
 	"github.com/LF-Engineering/lfx-event-schema/utils/datalake"
 
 	shared "github.com/LF-Engineering/insights-datasource-shared"
+	"github.com/LF-Engineering/insights-datasource-shared/cryptography"
 	elastic "github.com/LF-Engineering/insights-datasource-shared/elastic"
 	logger "github.com/LF-Engineering/insights-datasource-shared/ingestjob"
 
@@ -144,7 +145,7 @@ func (j *DSGerrit) WriteLog(ctx *shared.Ctx, timestamp time.Time, status, messag
 			{
 				"GERRIT_URL":     j.URL,
 				"GERRIT_PROJECT": ctx.Project,
-				"ProjectSlug": ctx.Project,
+				"ProjectSlug":    ctx.Project,
 			}},
 		Status:    status,
 		CreatedAt: timestamp,
@@ -166,6 +167,7 @@ func (j *DSGerrit) AddFlags() {
 
 // ParseArgs - parse gerrit specific environment variables
 func (j *DSGerrit) ParseArgs(ctx *shared.Ctx) (err error) {
+	encrypt, err := cryptography.NewEncryptionClient()
 	// Gerrit URL
 	if shared.FlagPassed(ctx, "url") && *j.FlagURL != "" {
 		j.URL = *j.FlagURL
@@ -176,7 +178,10 @@ func (j *DSGerrit) ParseArgs(ctx *shared.Ctx) (err error) {
 
 	// User
 	if shared.FlagPassed(ctx, "user") && *j.FlagUser != "" {
-		j.User = *j.FlagUser
+		j.User, err = encrypt.Decrypt(*j.FlagUser)
+		if err != nil {
+			return err
+		}
 	}
 	if ctx.EnvSet("USER") {
 		j.User = ctx.Env("USER")
@@ -188,7 +193,10 @@ func (j *DSGerrit) ParseArgs(ctx *shared.Ctx) (err error) {
 	// Key Path
 	j.SSHKeyPath = GerritDefaultSSHKeyPath
 	if shared.FlagPassed(ctx, "ssh-key-path") && *j.FlagSSHKeyPath != "" {
-		j.SSHKeyPath = *j.FlagSSHKeyPath
+		j.SSHKeyPath, err = encrypt.Decrypt(*j.FlagSSHKeyPath)
+		if err != nil {
+			return err
+		}
 	}
 	if ctx.EnvSet("SSH_KEY_PATH") {
 		j.SSHKeyPath = ctx.Env("SSH_KEY_PATH")
