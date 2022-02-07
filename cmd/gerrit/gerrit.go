@@ -193,10 +193,7 @@ func (j *DSGerrit) ParseArgs(ctx *shared.Ctx) (err error) {
 	// Key Path
 	j.SSHKeyPath = GerritDefaultSSHKeyPath
 	if shared.FlagPassed(ctx, "ssh-key-path") && *j.FlagSSHKeyPath != "" {
-		j.SSHKeyPath, err = encrypt.Decrypt(*j.FlagSSHKeyPath)
-		if err != nil {
-			return err
-		}
+		j.SSHKeyPath = *j.FlagSSHKeyPath
 	}
 	if ctx.EnvSet("SSH_KEY_PATH") {
 		j.SSHKeyPath = ctx.Env("SSH_KEY_PATH")
@@ -204,7 +201,10 @@ func (j *DSGerrit) ParseArgs(ctx *shared.Ctx) (err error) {
 
 	// Key
 	if shared.FlagPassed(ctx, "ssh-key") && *j.FlagSSHKey != "" {
-		j.SSHKey = *j.FlagSSHKey
+		j.SSHKey, err = encrypt.Decrypt(*j.FlagSSHKey)
+		if err != nil {
+			return err
+		}
 	}
 	if ctx.EnvSet("SSH_KEY") {
 		j.SSHKey = ctx.Env("SSH_KEY")
