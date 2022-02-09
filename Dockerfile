@@ -1,4 +1,7 @@
 FROM alpine:3.14
+
+RUN apk add --update openssh
+
 WORKDIR /app
 ENV GERRIT_URL='<GERRIT-URL>'
 ENV GERRIT_PROJECT='<GERRIT-PROJECT>'
