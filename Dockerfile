@@ -16,4 +16,4 @@ ENV ELASTIC_LOG_PASSWORD='<ELASTIC-LOG-PASSWORD>'
 RUN apk update && apk add --no-cache bash
 RUN ls -ltra
 COPY gerrit ./
-CMD ./gerrit --gerrit-url=${GERRIT_URL} --gerrit-project=${GERRIT_PROJECT} --gerrit-es-url=${ES_URL} --gerrit-user=${GERRIT_USERNAME} --gerrit-ssh-key=${GERRIT_SSH_KEY}
+CMD ./gerrit --gerrit-disable-host-key-check=true --gerrit-url=${GERRIT_URL} --gerrit-project=${GERRIT_PROJECT} --gerrit-es-url=${ES_URL} --gerrit-user=${GERRIT_USERNAME} --gerrit-ssh-key=${GERRIT_SSH_KEY}
