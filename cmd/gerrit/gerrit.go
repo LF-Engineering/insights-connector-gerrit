@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -183,6 +184,7 @@ func (j *DSGerrit) ParseArgs(ctx *shared.Ctx) (err error) {
 			return err
 		}
 	}
+
 	if ctx.EnvSet("USER") {
 		j.User = ctx.Env("USER")
 	}
@@ -201,14 +203,26 @@ func (j *DSGerrit) ParseArgs(ctx *shared.Ctx) (err error) {
 
 	// Key
 	if shared.FlagPassed(ctx, "ssh-key") && *j.FlagSSHKey != "" {
-		j.SSHKey, err = encrypt.Decrypt(*j.FlagSSHKey)
+		encodedKey, err := encrypt.Decrypt(*j.FlagSSHKey)
 		if err != nil {
 			return err
 		}
+
+		decodedKey, err := base64.StdEncoding.DecodeString(encodedKey)
+		if err != nil {
+			return err
+		}
+		j.SSHKey = string(decodedKey)
 	}
 	if ctx.EnvSet("SSH_KEY") {
-		j.SSHKey = ctx.Env("SSH_KEY")
+		encodedKey := ctx.Env("SSH_KEY")
+		decodedKey, err := base64.StdEncoding.DecodeString(encodedKey)
+		if err != nil {
+			return err
+		}
+		j.SSHKey = string(decodedKey)
 	}
+
 	if j.SSHKey != "" {
 		shared.AddRedacted(j.SSHKey, false)
 	}
