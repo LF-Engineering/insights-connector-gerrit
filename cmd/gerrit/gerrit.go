@@ -213,14 +213,15 @@ func (j *DSGerrit) ParseArgs(ctx *shared.Ctx) (err error) {
 			return err
 		}
 		j.SSHKey = string(decodedKey)
-	}
-	if ctx.EnvSet("SSH_KEY") {
-		encodedKey := ctx.Env("SSH_KEY")
-		decodedKey, err := base64.StdEncoding.DecodeString(encodedKey)
-		if err != nil {
-			return err
+	} else {
+		if ctx.EnvSet("SSH_KEY") {
+			encodedKey := ctx.Env("SSH_KEY")
+			decodedKey, err := base64.StdEncoding.DecodeString(encodedKey)
+			if err != nil {
+				return err
+			}
+			j.SSHKey = string(decodedKey)
 		}
-		j.SSHKey = string(decodedKey)
 	}
 
 	if j.SSHKey != "" {
