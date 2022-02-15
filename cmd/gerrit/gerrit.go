@@ -224,6 +224,7 @@ func (j *DSGerrit) ParseArgs(ctx *shared.Ctx) (err error) {
 		}
 	}
 
+	// shared.Printf("user=%s, key=%s\n", j.User, j.SSHKey)
 	if j.SSHKey != "" {
 		shared.AddRedacted(j.SSHKey, false)
 	}
