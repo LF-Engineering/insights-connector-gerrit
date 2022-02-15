@@ -224,6 +224,7 @@ func (j *DSGerrit) ParseArgs(ctx *shared.Ctx) (err error) {
 		}
 	}
 
+	// shared.Printf("user=%s, key=%s\n", j.User, j.SSHKey)
 	if j.SSHKey != "" {
 		shared.AddRedacted(j.SSHKey, false)
 	}
@@ -1636,7 +1637,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 		data[key] = ary
 		// Fake merge "event"
 		if isMerged {
-			changeset.Contributors = []insights.Contributor{}
+			// changeset.Contributors = []insights.Contributor{}
 			changeset.SyncTimestamp = time.Now()
 			changeset.SourceTimestamp = mergedOn
 			key := "changeset_merged"
@@ -1650,7 +1651,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 		}
 		// Fake "close" event (not merged and closed)
 		if isClosed && !isMerged {
-			changeset.Contributors = []insights.Contributor{}
+			// changeset.Contributors = []insights.Contributor{}
 			changeset.SyncTimestamp = time.Now()
 			changeset.SourceTimestamp = closedOn
 			key := "changeset_closed"
