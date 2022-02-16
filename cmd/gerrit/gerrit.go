@@ -446,8 +446,22 @@ func (j *DSGerrit) GetGerritReviews(ctx *shared.Ctx, after, before string, after
 	if ctx.ProjectFilter && ctx.Project != "" {
 		cmdLine = append(cmdLine, "project:", ctx.Project)
 	}
-	// --patch-sets --files --commit-message --dependencies --submit-records
-	cmdLine = append(cmdLine, `after:"`+after+`"`, `before:"`+before+`"`, "limit:", strconv.Itoa(j.MaxReviews), "(status:open OR status:closed)", "--all-approvals", "--all-reviewers", "--comments", "--format=JSON")
+	cmdLine = append(
+		cmdLine,
+		`after:"`+after+`"`,
+		`before:"`+before+`"`,
+		"limit:", strconv.Itoa(j.MaxReviews),
+		"(status:open OR status:closed)",
+		"--all-approvals",
+		"--all-reviewers",
+		"--comments",
+		"--patch-sets",
+		"--files",
+		"--commit-message",
+		"--dependencies",
+		"--submit-records",
+		"--format=JSON",
+	)
 	// 2006-01-02[ 15:04:05[.890][ -0700]]
 	if startFrom > 0 {
 		cmdLine = append(cmdLine, "--start="+strconv.Itoa(startFrom))
