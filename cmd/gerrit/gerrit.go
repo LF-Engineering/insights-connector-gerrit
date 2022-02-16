@@ -663,7 +663,7 @@ func (j *DSGerrit) ConvertDates(ctx *shared.Ctx, review map[string]interface{}) 
 								continue
 							}
 							comment["level"] = "patchset"
-							comment["patchset_comment_num"] = fmt.Sprintf("%d:%d", patchNum, commentNum)
+							comment["patchset_comment_index"] = fmt.Sprintf("%d:%d", patchNum, commentNum)
 							// patchSet level comments have no timestamp field, we use patchSet's creation date
 							field := "timestamp"
 							comment[field] = patchTS
@@ -1179,8 +1179,8 @@ func (j *DSGerrit) EnrichComments(ctx *shared.Ctx, review map[string]interface{}
 		rich["level"] = level
 		rich["type"] = "comment"
 		if level == "patchset" {
-			patchsetCommentNum, _ := comment["patchset_comment_num"]
-			rich["patchset_comment_num"] = patchsetCommentNum
+			patchsetCommentNum, _ := comment["patchset_comment_index"]
+			rich["patchset_comment_index"] = patchsetCommentNum
 			rich["id"] = reviewID + "_comment_" + fmt.Sprintf("%s_%d", patchsetCommentNum, created.Unix())
 		} else {
 			rich["id"] = reviewID + "_comment_" + fmt.Sprintf("%d", created.Unix())
