@@ -824,6 +824,24 @@ func (j *DSGerrit) EnrichItem(ctx *shared.Ctx, item map[string]interface{}) (ric
 		summary = summary[:shared.KeywordMaxlength]
 	}
 	rich["summary"] = summary
+	commitMessage, ok := review["commitMessage"].(string)
+	commitBody := ""
+	if ok {
+		ary := strings.Split(commitMessage, "\n")
+		lines := []string{}
+		for _, line := range ary {
+			line = strings.TrimSpace(line)
+			if line == "" {
+				continue
+			}
+			lines = append(lines, line)
+		}
+		if len(lines) > 1 {
+			commitBody = strings.Join(lines[1:], "\n")
+		}
+	}
+	rich["commit_message"] = commitMessage
+	rich["commit_body"] = commitBody
 	rich["name"] = nil
 	rich["domain"] = nil
 	ownerName, ok := shared.Dig(review, []string{"owner", "name"}, false, true)
@@ -1327,6 +1345,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 		csetURL, _ := doc["url"].(string)
 		repoURL := j.GetProjectRepoURL(csetRepo)
 		csetSummary, _ := doc["summary"].(string)
+		csetBody, _ := doc["commit_body"].(string)
 		csetStatus, _ := doc["changeset_status"].(string)
 		lowerStatus := strings.ToLower(csetStatus)
 		lines := strings.Split(csetSummary, "\n")
@@ -1634,7 +1653,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 			Contributors:  contributors,
 			ChangeRequest: insights.ChangeRequest{
 				Title:            title,
-				Body:             csetSummary,
+				Body:             csetBody,
 				ChangeRequestID:  sIID,
 				ChangeRequestURL: csetURL,
 				State:            insights.ChangeRequestState(lowerStatus),
