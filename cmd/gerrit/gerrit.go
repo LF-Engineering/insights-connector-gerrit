@@ -613,17 +613,19 @@ func (j *DSGerrit) ConvertDates(ctx *shared.Ctx, review map[string]interface{}) 
 	if ok {
 		patchSets, ok := iPatchSets.([]interface{})
 		if ok {
-			for _, iPatch := range patchSets {
+			for patchNum, iPatch := range patchSets {
 				patch, ok := iPatch.(map[string]interface{})
 				if !ok {
 					continue
 				}
+				var patchTS time.Time
 				field := "createdOn"
 				idt, ok := shared.Dig(patch, []string{field}, false, true)
 				if ok {
 					fdt, ok := idt.(float64)
 					if ok {
-						patch[field] = time.Unix(int64(fdt), 0)
+						patchTS = time.Unix(int64(fdt), 0)
+						patch[field] = patchTS
 						// Printf("converted patch %s: %v -> %v\n", field, idt, patch[field])
 					}
 				}
@@ -648,6 +650,26 @@ func (j *DSGerrit) ConvertDates(ctx *shared.Ctx, review map[string]interface{}) 
 						}
 					}
 				}
+				if patchTS.IsZero() {
+					continue
+				}
+				iComments, ok := shared.Dig(patch, []string{"comments"}, false, true)
+				if ok {
+					comments, ok := iComments.([]interface{})
+					if ok {
+						for commentNum, iComment := range comments {
+							comment, ok := iComment.(map[string]interface{})
+							if !ok {
+								continue
+							}
+							comment["level"] = "patchset"
+							comment["patchset_comment_num"] = fmt.Sprintf("%d:%d", patchNum, commentNum)
+							// patchSet level comments have no timestamp field, we use patchSet's creation date
+							field := "timestamp"
+							comment[field] = patchTS
+						}
+					}
+				}
 			}
 		}
 	}
@@ -660,6 +682,7 @@ func (j *DSGerrit) ConvertDates(ctx *shared.Ctx, review map[string]interface{}) 
 				if !ok {
 					continue
 				}
+				comment["level"] = "changeset"
 				field := "timestamp"
 				idt, ok := shared.Dig(comment, []string{field}, false, true)
 				if ok {
@@ -1152,8 +1175,16 @@ func (j *DSGerrit) EnrichComments(ctx *shared.Ctx, review map[string]interface{}
 			message = message[:shared.KeywordMaxlength]
 		}
 		rich["comment_message"] = message
+		level, _ := comment["level"]
+		rich["level"] = level
 		rich["type"] = "comment"
-		rich["id"] = reviewID + "_comment_" + fmt.Sprintf("%d", created.Unix())
+		if level == "patchset" {
+			patchsetCommentNum, _ := comment["patchset_comment_num"]
+			rich["patchset_comment_num"] = patchsetCommentNum
+			rich["id"] = reviewID + "_comment_" + fmt.Sprintf("%s_%d", patchsetCommentNum, created.Unix())
+		} else {
+			rich["id"] = reviewID + "_comment_" + fmt.Sprintf("%d", created.Unix())
+		}
 		rich["metadata__updated_on"] = created
 		rich["roles"] = j.GetRoles(ctx, comment, GerritCommentRoles, created)
 		// NOTE: From shared
@@ -1795,6 +1826,7 @@ func (j *DSGerrit) GerritEnrichItems(ctx *shared.Ctx, thrN int, items []interfac
 		}
 		data, _ := shared.Dig(doc, []string{"data"}, true, false)
 		iPatchSets, ok := shared.Dig(data, []string{"patchSets"}, false, true)
+		var patchComms []map[string]interface{}
 		if ok {
 			patchSets, ok := iPatchSets.([]interface{})
 			if ok {
@@ -1805,6 +1837,19 @@ func (j *DSGerrit) GerritEnrichItems(ctx *shared.Ctx, thrN int, items []interfac
 						continue
 					}
 					patches = append(patches, patch)
+					iComments, ok := shared.Dig(patch, []string{"comments"}, false, true)
+					if ok {
+						comments, ok := iComments.([]interface{})
+						if ok {
+							for _, iComment := range comments {
+								comment, ok := iComment.(map[string]interface{})
+								if !ok {
+									continue
+								}
+								patchComms = append(patchComms, comment)
+							}
+						}
+					}
 				}
 				if len(patches) > 0 {
 					var riches []interface{}
@@ -1827,6 +1872,11 @@ func (j *DSGerrit) GerritEnrichItems(ctx *shared.Ctx, thrN int, items []interfac
 						continue
 					}
 					comms = append(comms, comment)
+				}
+				if len(patchComms) > 0 {
+					for _, comm := range patchComms {
+						comms = append(comms, comm)
+					}
 				}
 				if len(comms) > 0 {
 					var riches []interface{}

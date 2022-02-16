@@ -7,9 +7,10 @@ export ENCRYPTION_BYTES="`cat ./secrets/ENCRYPTION_BYTES.dev.secret`"
 export ESURL="`cat ./secrets/ES_URL.prod.secret`"
 export STREAM=''
 export GERRIT_NO_INCREMENTAL=1
-#curl -s -XPOST -H 'Content-Type: application/json' "${ESURL}/last-update-cache/_delete_by_query" -d'{"query":{"term":{"key.keyword":"Gerrit:gerrit.fd.io"}}}' | jq -rS '.' || exit 1
+# export GERRIT_ST=1
+# curl -s -XPOST -H 'Content-Type: application/json' "${ESURL}/last-update-cache/_delete_by_query" -d'{"query":{"term":{"key.keyword":"Gerrit:gerrit.fd.io"}}}' | jq -rS '.' || exit 1
 ../insights-datasource-github/encrypt "`cat ./secrets/sshkey.secret | base64 -w0`" > ./secrets/sshkey.encrypted.secret || exit 2
 ../insights-datasource-github/encrypt "`cat ./secrets/sshkey-odl.secret | base64 -w0`" > ./secrets/sshkey-odl.encrypted.secret || exit 2
 ../insights-datasource-github/encrypt "`cat ./secrets/user.secret`" > ./secrets/user.encrypted.secret || exit 3
-#./gerrit --gerrit-disable-host-key-check --gerrit-es-url="${ESURL}" --gerrit-debug=1 --gerrit-user="`cat ./secrets/user.encrypted.secret`" --gerrit-ssh-key="`cat ./secrets/sshkey.encrypted.secret`" --gerrit-stream="${STREAM}" --gerrit-url=gerrit.fd.io --gerrit-pack-size=1000 --gerrit-max-reviews=1000
-./gerrit --gerrit-disable-host-key-check --gerrit-es-url="${ESURL}" --gerrit-debug=0 --gerrit-user="`cat ./secrets/user.encrypted.secret`" --gerrit-ssh-key="`cat ./secrets/sshkey-odl.encrypted.secret`" --gerrit-stream="${STREAM}" --gerrit-url=git.opendaylight.org --gerrit-pack-size=1000 --gerrit-max-reviews=1000 --gerrit-date-from=2021-06-29 --gerrit-date-to=2021-07-01
+# ./gerrit --gerrit-disable-host-key-check --gerrit-es-url="${ESURL}" --gerrit-debug=1 --gerrit-user="`cat ./secrets/user.encrypted.secret`" --gerrit-ssh-key="`cat ./secrets/sshkey.encrypted.secret`" --gerrit-stream="${STREAM}" --gerrit-url=gerrit.fd.io --gerrit-pack-size=1000 --gerrit-max-reviews=1000
+./gerrit --gerrit-disable-host-key-check --gerrit-es-url="${ESURL}" --gerrit-debug=0 --gerrit-user="`cat ./secrets/user.encrypted.secret`" --gerrit-ssh-key="`cat ./secrets/sshkey-odl.encrypted.secret`" --gerrit-stream="${STREAM}" --gerrit-url=git.opendaylight.org --gerrit-pack-size=1000 --gerrit-max-reviews=1000 --gerrit-date-from=2022-02-07 --gerrit-date-to=2022-02-16
