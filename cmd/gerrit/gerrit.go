@@ -437,6 +437,7 @@ func (j *DSGerrit) ItemUpdatedOn(item interface{}) time.Time {
 func (j *DSGerrit) GetGerritReviews(ctx *shared.Ctx, after, before string, afterEpoch, beforeEpoch float64, startFrom int) (reviews []map[string]interface{}, newStartFrom int, err error) {
 	cmdLine := j.GerritCmd
 	// https://gerrit-review.googlesource.com/Documentation/user-search.html:
+	// https://gerrit-review.googlesource.com/Documentation/cmd-query.html
 	// ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ./ssh-key.secret -p XYZ usr@gerrit-url gerrit query after:'1970-01-01 00:00:00' limit: 2 (status:open OR status:closed) --all-approvals --all-reviewers --comments --format=JSON
 	// For unknown reasons , gerrit is not returning data if number of seconds is not equal to 00 - so I'm updating query string to set seconds to ":00"
 	after = after[:len(after)-3] + ":00"
@@ -445,7 +446,22 @@ func (j *DSGerrit) GetGerritReviews(ctx *shared.Ctx, after, before string, after
 	if ctx.ProjectFilter && ctx.Project != "" {
 		cmdLine = append(cmdLine, "project:", ctx.Project)
 	}
-	cmdLine = append(cmdLine, `after:"`+after+`"`, `before:"`+before+`"`, "limit:", strconv.Itoa(j.MaxReviews), "(status:open OR status:closed)", "--all-approvals", "--all-reviewers", "--comments", "--format=JSON")
+	cmdLine = append(
+		cmdLine,
+		`after:"`+after+`"`,
+		`before:"`+before+`"`,
+		"limit:", strconv.Itoa(j.MaxReviews),
+		"(status:open OR status:closed)",
+		"--all-approvals",
+		"--all-reviewers",
+		"--comments",
+		"--patch-sets",
+		"--files",
+		"--commit-message",
+		"--dependencies",
+		"--submit-records",
+		"--format=JSON",
+	)
 	// 2006-01-02[ 15:04:05[.890][ -0700]]
 	if startFrom > 0 {
 		cmdLine = append(cmdLine, "--start="+strconv.Itoa(startFrom))
@@ -808,6 +824,24 @@ func (j *DSGerrit) EnrichItem(ctx *shared.Ctx, item map[string]interface{}) (ric
 		summary = summary[:shared.KeywordMaxlength]
 	}
 	rich["summary"] = summary
+	commitMessage, ok := review["commitMessage"].(string)
+	commitBody := ""
+	if ok {
+		ary := strings.Split(commitMessage, "\n")
+		lines := []string{}
+		for _, line := range ary {
+			line = strings.TrimSpace(line)
+			if line == "" {
+				continue
+			}
+			lines = append(lines, line)
+		}
+		if len(lines) > 1 {
+			commitBody = strings.Join(lines[1:], "\n")
+		}
+	}
+	rich["commit_message"] = commitMessage
+	rich["commit_body"] = commitBody
 	rich["name"] = nil
 	rich["domain"] = nil
 	ownerName, ok := shared.Dig(review, []string{"owner", "name"}, false, true)
@@ -1311,6 +1345,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 		csetURL, _ := doc["url"].(string)
 		repoURL := j.GetProjectRepoURL(csetRepo)
 		csetSummary, _ := doc["summary"].(string)
+		csetBody, _ := doc["commit_body"].(string)
 		csetStatus, _ := doc["changeset_status"].(string)
 		lowerStatus := strings.ToLower(csetStatus)
 		lines := strings.Split(csetSummary, "\n")
@@ -1618,7 +1653,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 			Contributors:  contributors,
 			ChangeRequest: insights.ChangeRequest{
 				Title:            title,
-				Body:             csetSummary,
+				Body:             csetBody,
 				ChangeRequestID:  sIID,
 				ChangeRequestURL: csetURL,
 				State:            insights.ChangeRequestState(lowerStatus),
