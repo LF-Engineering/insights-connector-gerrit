@@ -437,6 +437,7 @@ func (j *DSGerrit) ItemUpdatedOn(item interface{}) time.Time {
 func (j *DSGerrit) GetGerritReviews(ctx *shared.Ctx, after, before string, afterEpoch, beforeEpoch float64, startFrom int) (reviews []map[string]interface{}, newStartFrom int, err error) {
 	cmdLine := j.GerritCmd
 	// https://gerrit-review.googlesource.com/Documentation/user-search.html:
+	// https://gerrit-review.googlesource.com/Documentation/cmd-query.html
 	// ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ./ssh-key.secret -p XYZ usr@gerrit-url gerrit query after:'1970-01-01 00:00:00' limit: 2 (status:open OR status:closed) --all-approvals --all-reviewers --comments --format=JSON
 	// For unknown reasons , gerrit is not returning data if number of seconds is not equal to 00 - so I'm updating query string to set seconds to ":00"
 	after = after[:len(after)-3] + ":00"
@@ -445,6 +446,7 @@ func (j *DSGerrit) GetGerritReviews(ctx *shared.Ctx, after, before string, after
 	if ctx.ProjectFilter && ctx.Project != "" {
 		cmdLine = append(cmdLine, "project:", ctx.Project)
 	}
+	// --patch-sets --files --commit-message --dependencies --submit-records
 	cmdLine = append(cmdLine, `after:"`+after+`"`, `before:"`+before+`"`, "limit:", strconv.Itoa(j.MaxReviews), "(status:open OR status:closed)", "--all-approvals", "--all-reviewers", "--comments", "--format=JSON")
 	// 2006-01-02[ 15:04:05[.890][ -0700]]
 	if startFrom > 0 {
