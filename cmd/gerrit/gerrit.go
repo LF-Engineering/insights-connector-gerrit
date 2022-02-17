@@ -1515,7 +1515,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 						PatchsetID:      patchsetSID,
 						ChangesetID:     changesetID,
 						CommitSHA:       sha,
-						Contributors:    patchsetContributors,
+						Contributors:    shared.DedupContributors(patchsetContributors),
 						SyncTimestamp:   time.Now(),
 						SourceTimestamp: patchsetCreatedOn,
 						// FIXME we don't have anything more useful, patchset "obj" also has "summary" but this is also a copy from the parent changeset
@@ -1751,7 +1751,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 			ID:            changesetID,
 			RepositoryID:  repoID,
 			RepositoryURL: repoURL,
-			Contributors:  contributors,
+			Contributors:  shared.DedupContributors(contributors),
 			ChangeRequest: insights.ChangeRequest{
 				Title:            title,
 				Body:             csetBody,
