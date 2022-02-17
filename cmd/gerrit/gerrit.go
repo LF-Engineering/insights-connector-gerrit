@@ -619,6 +619,10 @@ func (j *DSGerrit) ConvertDates(ctx *shared.Ctx, review map[string]interface{}) 
 					continue
 				}
 				var patchTS time.Time
+				fNumber, _ := patch["number"].(float64)
+				number := fmt.Sprintf("%.0f", fNumber)
+				ref, _ := patch["ref"].(string)
+				patchsetSID := number + ":" + ref
 				field := "createdOn"
 				idt, ok := shared.Dig(patch, []string{field}, false, true)
 				if ok {
@@ -664,9 +668,9 @@ func (j *DSGerrit) ConvertDates(ctx *shared.Ctx, review map[string]interface{}) 
 							}
 							comment["level"] = "patchset"
 							comment["patchset_comment_index"] = fmt.Sprintf("%d:%d", patchNum, commentNum)
+							comment["patchset_sid"] = patchsetSID
 							// patchSet level comments have no timestamp field, we use patchSet's creation date
-							field := "timestamp"
-							comment[field] = patchTS
+							comment["timestamp"] = patchTS
 						}
 					}
 				}
@@ -1175,6 +1179,7 @@ func (j *DSGerrit) EnrichComments(ctx *shared.Ctx, review map[string]interface{}
 			message = message[:shared.KeywordMaxlength]
 		}
 		rich["comment_message"] = message
+		rich["patchset_sid"], _ = comment["patchset_sid"]
 		level, _ := comment["level"]
 		rich["level"] = level
 		rich["type"] = "comment"
@@ -1216,6 +1221,11 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 			Source:           insights.GerritSource,
 		}
 		changesetCommentBaseEvent := gerrit.ChangesetCommentBaseEvent{
+			Connector:        insights.GerritConnector,
+			ConnectorVersion: GerritBackendVersion,
+			Source:           insights.GerritSource,
+		}
+		patchsetCommentBaseEvent := gerrit.PatchsetCommentBaseEvent{
 			Connector:        insights.GerritConnector,
 			ConnectorVersion: GerritBackendVersion,
 			Source:           insights.GerritSource,
@@ -1289,7 +1299,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 					})
 				}
 				data[k] = ary
-			case "comment_added":
+			case "changeset_comment_added":
 				baseEvent := service.BaseEvent{
 					Type: service.EventType(gerrit.ChangesetCommentAddedEvent{}.Event()),
 					CRUDInfo: service.CRUDInfo{
@@ -1305,6 +1315,25 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 						ChangesetCommentBaseEvent: changesetCommentBaseEvent,
 						BaseEvent:                 baseEvent,
 						Payload:                   changesetComment.(gerrit.ChangesetComment),
+					})
+				}
+				data[k] = ary
+			case "patchset_comment_added":
+				baseEvent := service.BaseEvent{
+					Type: service.EventType(gerrit.PatchsetCommentAddedEvent{}.Event()),
+					CRUDInfo: service.CRUDInfo{
+						CreatedBy: GerritConnector,
+						UpdatedBy: GerritConnector,
+						CreatedAt: time.Now().Unix(),
+						UpdatedAt: time.Now().Unix(),
+					},
+				}
+				ary := []interface{}{}
+				for _, patchsetComment := range v {
+					ary = append(ary, gerrit.PatchsetCommentAddedEvent{
+						PatchsetCommentBaseEvent: patchsetCommentBaseEvent,
+						BaseEvent:                baseEvent,
+						Payload:                  patchsetComment.(gerrit.PatchsetComment),
 					})
 				}
 				data[k] = ary
@@ -1352,7 +1381,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 			}
 		}
 	}()
-	changesetID, repoID, userID, patchsetID, approvalID, commentID := "", "", "", "", "", ""
+	changesetID, repoID, userID, patchsetID, approvalID, commentID, patchID := "", "", "", "", "", "", ""
 	source := GerritDataSource
 	for _, iDoc := range docs {
 		doc, _ := iDoc.(map[string]interface{})
@@ -1486,7 +1515,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 						PatchsetID:      patchsetSID,
 						ChangesetID:     changesetID,
 						CommitSHA:       sha,
-						Contributors:    patchsetContributors,
+						Contributors:    shared.DedupContributors(patchsetContributors),
 						SyncTimestamp:   time.Now(),
 						SourceTimestamp: patchsetCreatedOn,
 						// FIXME we don't have anything more useful, patchset "obj" also has "summary" but this is also a copy from the parent changeset
@@ -1608,6 +1637,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 				if !okRoles || len(roles) == 0 {
 					continue
 				}
+				level, _ := comment["level"].(string)
 				sCommentBody, _ := comment["comment_message"].(string)
 				commentCreatedOn, _ := comment["comment_created_on"].(time.Time)
 				sCommentID, _ := comment["id"].(string)
@@ -1641,36 +1671,76 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 							Source:     source,
 						},
 					}
-					commentID, err = gerrit.GenerateGerritChangesetCommentID(repoID, sCommentID)
-					// shared.Printf("gerrit.GenerateGerritChangesetCommentID(%s,%s) -> %s\n", repoID, sCommentID, commentID)
-					if err != nil {
-						shared.Printf("gerrit.GenerateGerritChangesetCommentID(%s,%s): %+v for %+v\n", repoID, sCommentID, err, doc)
-						return
-					}
-					// If we want to add comments as a contributor on the changeset object
-					// contributors = append(contributors, contributor)
-					comment := gerrit.ChangesetComment{
-						ID:          commentID,
-						ChangesetID: changesetID,
-						Comment: insights.Comment{
-							Body: sCommentBody,
-							// FIXME: we don't have anything else
-							CommentURL:      csetURL,
-							SourceTimestamp: commentCreatedOn,
-							SyncTimestamp:   time.Now(),
-							CommentID:       sCommentID,
-							Contributor:     contributor,
-							Orphaned:        false,
-						},
-					}
-					key := "comment_added"
-					ary, ok := data[key]
-					if !ok {
-						ary = []interface{}{comment}
+					if level == "changeset" {
+						commentID, err = gerrit.GenerateGerritChangesetCommentID(repoID, sCommentID)
+						// shared.Printf("gerrit.GenerateGerritChangesetCommentID(%s,%s) -> %s\n", repoID, sCommentID, commentID)
+						if err != nil {
+							shared.Printf("gerrit.GenerateGerritChangesetCommentID(%s,%s): %+v for %+v\n", repoID, sCommentID, err, doc)
+							return
+						}
+						// If we want to add comments as a contributor on the changeset object
+						// contributors = append(contributors, contributor)
+						comment := gerrit.ChangesetComment{
+							ID:          commentID,
+							ChangesetID: changesetID,
+							Comment: insights.Comment{
+								Body: sCommentBody,
+								// FIXME: we don't have anything else
+								CommentURL:      csetURL,
+								SourceTimestamp: commentCreatedOn,
+								SyncTimestamp:   time.Now(),
+								CommentID:       sCommentID,
+								Contributor:     contributor,
+								Orphaned:        false,
+							},
+						}
+						key := "changeset_comment_added"
+						ary, ok := data[key]
+						if !ok {
+							ary = []interface{}{comment}
+						} else {
+							ary = append(ary, comment)
+						}
+						data[key] = ary
 					} else {
-						ary = append(ary, comment)
+						commentID, err = gerrit.GenerateGerritPatchsetCommentID(repoID, sCommentID)
+						// shared.Printf("gerrit.GenerateGerritPatchsetCommentID(%s,%s) -> %s\n", repoID, sCommentID, commentID)
+						if err != nil {
+							shared.Printf("gerrit.GenerateGerritPatchsetCommentID(%s,%s): %+v for %+v\n", repoID, sCommentID, err, doc)
+							return
+						}
+						patchsetSID, _ := comment["patchset_sid"].(string)
+						patchID, err = gerrit.GenerateGerritPatchsetID(changesetID, patchsetSID)
+						// shared.Printf("in approval gerrit.GenerateGerritPatchsetID(%s,%s) -> %s\n", changesetID, patchsetSID, patchID)
+						if err != nil {
+							shared.Printf("gerrit.GenerateGerritPatchsetID(%s,%s): %+v for %+v\n", changesetID, patchsetSID, err, doc)
+							return
+						}
+						// If we want to add comments as a contributor on the changeset object
+						// contributors = append(contributors, contributor)
+						comment := gerrit.PatchsetComment{
+							ID:         commentID,
+							PatchsetID: patchID,
+							Comment: insights.Comment{
+								Body: sCommentBody,
+								// FIXME: we don't have anything else
+								CommentURL:      csetURL,
+								SourceTimestamp: commentCreatedOn,
+								SyncTimestamp:   time.Now(),
+								CommentID:       sCommentID,
+								Contributor:     contributor,
+								Orphaned:        false,
+							},
+						}
+						key := "patchset_comment_added"
+						ary, ok := data[key]
+						if !ok {
+							ary = []interface{}{comment}
+						} else {
+							ary = append(ary, comment)
+						}
+						data[key] = ary
 					}
-					data[key] = ary
 				}
 			}
 		}
@@ -1681,7 +1751,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 			ID:            changesetID,
 			RepositoryID:  repoID,
 			RepositoryURL: repoURL,
-			Contributors:  contributors,
+			Contributors:  shared.DedupContributors(contributors),
 			ChangeRequest: insights.ChangeRequest{
 				Title:            title,
 				Body:             csetBody,
@@ -1769,8 +1839,11 @@ func (j *DSGerrit) GerritEnrichItems(ctx *shared.Ctx, thrN int, items []interfac
 						case "changeset_closed":
 							ev, _ := v[0].(gerrit.ChangesetClosedEvent)
 							err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
-						case "comment_added":
+						case "changeset_comment_added":
 							ev, _ := v[0].(gerrit.ChangesetCommentAddedEvent)
+							err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
+						case "patchset_comment_added":
+							ev, _ := v[0].(gerrit.PatchsetCommentAddedEvent)
 							err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
 						case "approval_added":
 							ev, _ := v[0].(gerrit.ApprovalAddedEvent)
