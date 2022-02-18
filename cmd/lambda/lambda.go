@@ -42,6 +42,10 @@ func HandleRequest(ctx context.Context) {
               Value: aws.String("GERRIT_PROJECT"),
             },
             &ecs.KeyValuePair{
+              Name: aws.String("GERRIT_PROJECT_FILTER"),
+              Value: aws.String("GERRIT_PROJECT_FILTER"),
+            },
+            &ecs.KeyValuePair{
               Name: aws.String("ES_URL"),
               Value: aws.String(os.Getenv("ES_URL")),
             },
