@@ -169,6 +169,9 @@ func (j *DSGerrit) AddFlags() {
 // ParseArgs - parse gerrit specific environment variables
 func (j *DSGerrit) ParseArgs(ctx *shared.Ctx) (err error) {
 	encrypt, err := cryptography.NewEncryptionClient()
+	if err != nil {
+		return err
+	}
 	// Gerrit URL
 	if shared.FlagPassed(ctx, "url") && *j.FlagURL != "" {
 		j.URL = *j.FlagURL
