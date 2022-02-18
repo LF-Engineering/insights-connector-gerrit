@@ -167,7 +167,7 @@ func (j *DSGerrit) AddFlags() {
 }
 
 // ParseArgs - parse gerrit specific environment variables
-func (j *DSGerrit) ParseArgs(ctx *shared.Ctx) (err error) {
+func (j *DSGerrit) ParseArgs(ctx *shared.Ctx) error {
 	encrypt, err := cryptography.NewEncryptionClient()
 	if err != nil {
 		return err
@@ -282,7 +282,7 @@ func (j *DSGerrit) ParseArgs(ctx *shared.Ctx) (err error) {
 	// gGerritDataSource.Categories = j.Categories
 	// gGerritMetaData.Project = ctx.Project
 	// gGerritMetaData.Tags = ctx.Tags
-	return
+	return nil
 }
 
 // Validate - is current DS configuration OK?
