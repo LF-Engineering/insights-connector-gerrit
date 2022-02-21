@@ -283,7 +283,7 @@ func (j *DSGerrit) ParseArgs(ctx *shared.Ctx) (err error) {
 }
 
 // Validate - is current DS configuration OK?
-func (j *DSGerrit) Validate() (err error) {
+func (j *DSGerrit) Validate(ctx *shared.Ctx) (err error) {
 	j.URL = strings.TrimSpace(j.URL)
 	if strings.HasSuffix(j.URL, "/") {
 		j.URL = j.URL[:len(j.URL)-1]
@@ -299,6 +299,22 @@ func (j *DSGerrit) Validate() (err error) {
 	}
 	if j.URL == "" || j.User == "" {
 		err = fmt.Errorf("URL and user must be set")
+		return
+	}
+	if ctx.Project == "<GERRIT-PROJECT>" {
+		err = fmt.Errorf("Project cannot be %s", ctx.Project)
+		return
+	}
+	if ctx.Project == "" && ctx.ProjectFilter {
+		err = fmt.Errorf("Project cannot be empty when requesting internal project filtering")
+		return
+	}
+	if ctx.Project != "" && !ctx.ProjectFilter {
+		err = fmt.Errorf(
+			"When you specify project, you also need to request internal project filtering, " +
+				"setting project without filtering was only allowed in V1 to process all projects " +
+				"but set a custom project name on all of them",
+		)
 	}
 	return
 }
@@ -390,7 +406,7 @@ func (j *DSGerrit) Init(ctx *shared.Ctx) (err error) {
 	if err != nil {
 		return
 	}
-	err = j.Validate()
+	err = j.Validate(ctx)
 	if err != nil {
 		return
 	}
