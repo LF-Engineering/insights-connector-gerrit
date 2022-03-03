@@ -184,16 +184,16 @@ func (j *DSGerrit) ParseArgs(ctx *shared.Ctx) (err error) {
 
 	// User
 	if shared.FlagPassed(ctx, "user") && *j.FlagUser != "" {
-		j.User, err = encrypt.Decrypt(*j.FlagUser)
-		if err != nil {
-			return err
-		}
+		j.User = *j.FlagUser
 	}
-
 	if ctx.EnvSet("USER") {
 		j.User = ctx.Env("USER")
 	}
 	if j.User != "" {
+		j.User, err = encrypt.Decrypt(j.User)
+		if err != nil {
+			return err
+		}
 		shared.AddRedacted(j.User, false)
 	}
 
@@ -212,7 +212,6 @@ func (j *DSGerrit) ParseArgs(ctx *shared.Ctx) (err error) {
 		if err != nil {
 			return err
 		}
-
 		decodedKey, err := base64.StdEncoding.DecodeString(encodedKey)
 		if err != nil {
 			return err
@@ -220,7 +219,10 @@ func (j *DSGerrit) ParseArgs(ctx *shared.Ctx) (err error) {
 		j.SSHKey = string(decodedKey)
 	} else {
 		if ctx.EnvSet("SSH_KEY") {
-			encodedKey := ctx.Env("SSH_KEY")
+			encodedKey, err := encrypt.Decrypt(ctx.Env("SSH_KEY"))
+			if err != nil {
+				return err
+			}
 			decodedKey, err := base64.StdEncoding.DecodeString(encodedKey)
 			if err != nil {
 				return err
