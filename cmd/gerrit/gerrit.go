@@ -1534,9 +1534,10 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 						return
 					}
 					patchset := gerrit.Patchset{
-						ID:              patchsetID,
-						PatchsetID:      patchsetSID,
-						ChangesetID:     sIID,
+						ID:         patchsetID,
+						PatchsetID: patchsetSID,
+						// ChangesetID:     sIID,
+						ChangesetID:     changesetID,
 						CommitSHA:       sha,
 						Contributors:    shared.DedupContributors(patchsetContributors),
 						SyncTimestamp:   time.Now(),
@@ -1705,7 +1706,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 						// contributors = append(contributors, contributor)
 						comment := gerrit.ChangesetComment{
 							ID:          commentID,
-							ChangesetID: sIID,
+							ChangesetID: changesetID,
 							Comment: insights.Comment{
 								Body: sCommentBody,
 								// FIXME: we don't have anything else
