@@ -2327,6 +2327,8 @@ func main() {
 		return
 	}
 	timestamp := time.Now()
+	shared.SetSyncMode(true, false)
+	shared.SetLogLoggerError(false)
 	shared.AddLogger(&gerrit.Logger, GerritDataSource, logger.Internal, []map[string]string{{"GERRIT_URL": gerrit.URL, "GERRIT_PROJECT": ctx.Project, "ProjectSlug": ctx.Project}})
 	gerrit.WriteLog(&ctx, timestamp, logger.InProgress, "")
 	err = gerrit.Sync(&ctx)
