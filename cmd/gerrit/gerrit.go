@@ -823,6 +823,12 @@ func (j *DSGerrit) LastChangesetApprovalValue(ctx *shared.Ctx, patchSets []inter
 // EnrichItem - return rich item from raw item
 func (j *DSGerrit) EnrichItem(ctx *shared.Ctx, item map[string]interface{}) (rich map[string]interface{}, err error) {
 	rich = make(map[string]interface{})
+	if ctx.Debug > 1 {
+		defer func() {
+			fmt.Printf("raw = %s\n", shared.PrettyPrint(item))
+			fmt.Printf("rich = %s\n", shared.PrettyPrint(rich))
+		}()
+	}
 	for _, field := range shared.RawFields {
 		v, _ := item[field]
 		rich[field] = v
