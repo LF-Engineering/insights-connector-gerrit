@@ -3,10 +3,11 @@ module github.com/LF-Engineering/insights-datasource-gerrit
 go 1.15
 
 require (
-	github.com/LF-Engineering/insights-datasource-shared v1.4.3-0.20220323060921-70c456393743
-	github.com/LF-Engineering/lfx-event-schema v0.1.14
+	github.com/LF-Engineering/insights-datasource-shared v1.4.5-0.20220511063206-6754a12066b9
+	github.com/LF-Engineering/lfx-event-schema v0.1.20-0.20220510142557-956ba192fade
 	github.com/aws/aws-lambda-go v1.28.0
 	github.com/aws/aws-sdk-go v1.42.42
+	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
 	github.com/json-iterator/go v1.1.12
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 )

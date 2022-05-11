@@ -1419,10 +1419,12 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 		csetNumber, _ := doc["changeset_number"].(float64)
 		sCsetNumber := fmt.Sprintf("%.0f", csetNumber)
 		sIID := sCsetNumber + ":" + csetHash
-		repoID, err = repository.GenerateRepositoryID(csetRepo, j.URL, GerritDataSource)
-		// shared.Printf("GenerateRepositoryID(%s,%s,%s) -> %s\n", csetRepo, j.URL, GerritDataSource, repoID)
+		repoURL := j.GetProjectRepoURL(csetRepo)
+		repoID, err = repository.GenerateRepositoryID(csetRepo, shared.StripURL(repoURL), GerritDataSource)
+		// This used Gerrit server URL instead of server URL + project
+		// shared.Printf("GenerateRepositoryID(%s,%s,%s) -> %s\n", csetRepo, shared.StripURL(j.URL), GerritDataSource, repoID)
 		if err != nil {
-			shared.Printf("GenerateRepositoryID(%s,%s,%s): %+v for %+v\n", csetRepo, j.URL, GerritDataSource, err, doc)
+			shared.Printf("GenerateRepositoryID(%s,%s,%s): %+v for %+v\n", csetRepo, shared.StripURL(repoURL), GerritDataSource, err, doc)
 			return
 		}
 		changesetID, err = gerrit.GenerateGerritChangesetID(repoID, sIID)
@@ -1432,7 +1434,6 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 			return
 		}
 		csetURL, _ := doc["url"].(string)
-		repoURL := j.GetProjectRepoURL(csetRepo)
 		csetSummary, _ := doc["summary"].(string)
 		csetBody, _ := doc["commit_body"].(string)
 		csetStatus, _ := doc["changeset_status"].(string)
