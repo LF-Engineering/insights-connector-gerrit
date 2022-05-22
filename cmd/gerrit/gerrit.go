@@ -6,7 +6,6 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"log"
 	http1 "net/http"
 	"os"
 	"os/signal"
@@ -1241,13 +1240,13 @@ func (j *DSGerrit) GetProjectRepoURL(project string) (string, error) {
 	httpClient := http.NewClientProvider(time.Second * 60)
 
 	for _, partial := range partialsList {
-		statusCode, res, err := httpClient.Request(partial, http1.MethodGet, nil, nil, nil)
+		statusCode, _, err := httpClient.Request(partial, http1.MethodGet, nil, nil, nil)
 		if err != nil {
 			return "", err
 		}
 
 		if statusCode == http1.StatusNotFound {
-			log.Println(string(res))
+			// shared.Printf("url %+v \n %+v", partial, string(res))
 			continue
 		}
 
