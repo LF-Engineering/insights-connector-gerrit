@@ -2,9 +2,11 @@ package main
 
 import (
 	"encoding/base64"
+	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
+	http1 "net/http"
 	"os"
 	"os/signal"
 	"regexp"
@@ -24,6 +26,7 @@ import (
 	shared "github.com/LF-Engineering/insights-datasource-shared"
 	"github.com/LF-Engineering/insights-datasource-shared/cryptography"
 	elastic "github.com/LF-Engineering/insights-datasource-shared/elastic"
+	"github.com/LF-Engineering/insights-datasource-shared/http"
 	logger "github.com/LF-Engineering/insights-datasource-shared/ingestjob"
 
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -1229,12 +1232,29 @@ func (j *DSGerrit) EnrichComments(ctx *shared.Ctx, review map[string]interface{}
 }
 
 // GetProjectRepoURL - return gerrit repository URL for a given project
-func (j *DSGerrit) GetProjectRepoURL(project string) string {
+func (j *DSGerrit) GetProjectRepoURL(project string) (string, error) {
 	// FIXME: based on Fayaz comment, we probably need to catch more cases in different Gerrit instances
-	if !strings.Contains(j.URL, "://") {
-		return "https://" + j.URL + "/r/admin/repos/" + project
+	rPartial := strings.TrimSpace("https://" + j.URL + "/r/admin/repos/" + project)
+	gerritPartial := strings.TrimSpace("https://" + j.URL + "/gerrit/admin/repos/" + project)
+	partialsList := []string{rPartial, gerritPartial}
+	httpClient := http.NewClientProvider(time.Second * 60)
+
+	for _, partial := range partialsList {
+		statusCode, _, err := httpClient.Request(partial, http1.MethodGet, nil, nil, nil)
+		if err != nil {
+			return "", err
+		}
+
+		if statusCode == http1.StatusNotFound {
+			// shared.Printf("url %+v \n %+v", partial, string(res))
+			continue
+		}
+
+		if statusCode == http1.StatusOK {
+			return partial, err
+		}
 	}
-	return j.URL + "/r/admin/repos/" + project
+	return "", errors.New("no compatible partial for url " + j.URL + " and project " + project)
 }
 
 // GetModelData - return data in lfx-event-schema format
@@ -1410,7 +1430,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 			}
 		}
 	}()
-	changesetID, repoID, userID, patchsetID, approvalID, commentID, patchID := "", "", "", "", "", "", ""
+	changesetID, repoID, userID, patchsetID, approvalID, commentID, patchID, repoURL := "", "", "", "", "", "", "", ""
 	source := GerritDataSource
 	for _, iDoc := range docs {
 		doc, _ := iDoc.(map[string]interface{})
@@ -1419,7 +1439,11 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 		csetNumber, _ := doc["changeset_number"].(float64)
 		sCsetNumber := fmt.Sprintf("%.0f", csetNumber)
 		sIID := sCsetNumber + ":" + csetHash
-		repoURL := j.GetProjectRepoURL(csetRepo)
+		repoURL, err = j.GetProjectRepoURL(csetRepo)
+		if err != nil {
+			shared.Printf("GetProjectRepoURL(%s): %+v for %+v\n", csetRepo, err, doc)
+			return
+		}
 		repoID, err = repository.GenerateRepositoryID(csetRepo, repoURL, GerritDataSource)
 		// This used Gerrit server URL instead of server URL + project
 		// shared.Printf("GenerateRepositoryID(%s,%s,%s) -> %s\n", csetRepo, j.URL, GerritDataSource, repoID)
