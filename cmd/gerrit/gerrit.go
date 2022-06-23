@@ -5,6 +5,8 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/LF-Engineering/insights-datasource-gerrit/build"
+	"github.com/sirupsen/logrus"
 	"io/ioutil"
 	http1 "net/http"
 	"os"
@@ -107,6 +109,7 @@ type DSGerrit struct {
 	Publisher
 	Stream string // stream to publish the data
 	Logger logger.Logger
+	log    *logrus.Entry
 }
 
 // AddPublisher - sets Kinesis publisher
@@ -118,7 +121,7 @@ func (j *DSGerrit) AddPublisher(publisher Publisher) {
 // FIXME: don't use when done implementing
 func (j *DSGerrit) PublisherPushEvents(ev, ori, src, cat, env string, v []interface{}) error {
 	data, err := jsoniter.Marshal(v)
-	shared.Printf("publish[ev=%s ori=%s src=%s cat=%s env=%s]: %d items: %+v -> %v\n", ev, ori, src, cat, env, len(v), string(data), err)
+	j.log.WithFields(logrus.Fields{"operation": "PublisherPushEvents"}).Infof("publish[ev=%s ori=%s src=%s cat=%s env=%s]: %d items: %+v -> %v", ev, ori, src, cat, env, len(v), string(data), err)
 	return nil
 }
 
@@ -130,12 +133,12 @@ func (j *DSGerrit) AddLogger(ctx *shared.Ctx) {
 		Username: os.Getenv("ELASTIC_LOG_USER"),
 	})
 	if err != nil {
-		shared.Printf("AddLogger error: %+v", err)
+		j.log.WithFields(logrus.Fields{"operation": "AddLogger"}).Errorf("error creating elastic client: %+v", err)
 		return
 	}
 	logProvider, err := logger.NewLogger(client, os.Getenv("STAGE"))
 	if err != nil {
-		shared.Printf("AddLogger error: %+v", err)
+		j.log.WithFields(logrus.Fields{"operation": "AddLogger"}).Errorf("error creating logger client: %+v", err)
 		return
 	}
 	j.Logger = *logProvider
@@ -390,7 +393,7 @@ func (j *DSGerrit) GetGerritVersion(ctx *shared.Ctx) (err error) {
 	)
 	sout, serr, err = shared.ExecCommand(ctx, cmdLine, "", nil)
 	if err != nil {
-		shared.Printf("error executing %v: %v\n%s\n%s\n", cmdLine, err, sout, serr)
+		j.log.WithFields(logrus.Fields{"operation": "GetGerritVersion"}).Errorf("error executing command: %v, error: %v, output: %s, output error: %s", cmdLine, err, sout, serr)
 		return
 	}
 	match := GerritVersionRegexp.FindAllStringSubmatch(sout, -1)
@@ -401,7 +404,7 @@ func (j *DSGerrit) GetGerritVersion(ctx *shared.Ctx) (err error) {
 	j.VersionMajor, _ = strconv.Atoi(match[0][1])
 	j.VersionMinor, _ = strconv.Atoi(match[0][2])
 	if ctx.Debug > 0 {
-		shared.Printf("Detected gerrit %d.%d\n", j.VersionMajor, j.VersionMinor)
+		j.log.WithFields(logrus.Fields{"operation": "GetGerritVersion"}).Debugf("Detected gerrit %d.%d", j.VersionMajor, j.VersionMinor)
 	}
 	return
 }
@@ -412,6 +415,7 @@ func (j *DSGerrit) Init(ctx *shared.Ctx) (err error) {
 	ctx.InitEnv("Gerrit")
 	j.AddFlags()
 	ctx.Init()
+	j.createStructuredLogger(ctx)
 	err = j.ParseArgs(ctx)
 	if err != nil {
 		return
@@ -422,10 +426,10 @@ func (j *DSGerrit) Init(ctx *shared.Ctx) (err error) {
 	}
 	if ctx.Debug > 1 {
 		g := &gerrit.Changeset{}
-		shared.Printf("Gerrit: %+v\nshared context: %s\nModel: %+v\n", j, ctx.Info(), g)
+		j.log.WithFields(logrus.Fields{"operation": "Init"}).Debugf("Gerrit: %+v\nshared context: %s\nModel: %+v", j, ctx.Info(), g)
 	}
 	if ctx.Debug > 0 {
-		shared.Printf("stream: '%s'\n", j.Stream)
+		j.log.WithFields(logrus.Fields{"operation": "Init"}).Debugf("stream: '%s'", j.Stream)
 	}
 	if j.Stream != "" {
 		sess, err := session.NewSession()
@@ -497,11 +501,11 @@ func (j *DSGerrit) GetGerritReviews(ctx *shared.Ctx, after, before string, after
 		serr string
 	)
 	if ctx.Debug > 0 {
-		shared.Printf("getting reviews via: %v\n", cmdLine)
+		j.log.WithFields(logrus.Fields{"operation": "GetGerritReviews"}).Debugf("getting reviews via: %v", cmdLine)
 	}
 	sout, serr, err = shared.ExecCommand(ctx, cmdLine, "", nil)
 	if err != nil {
-		shared.Printf("error executing %v: %v\n%s\n%s\n", cmdLine, err, sout, serr)
+		j.log.WithFields(logrus.Fields{"operation": "GetGerritReviews"}).Errorf("error executing command: %v, error: %v, output:%s, output erro: %s", cmdLine, err, sout, serr)
 		return
 	}
 	data := strings.Replace("["+strings.Replace(sout, "\n", ",", -1)+"]", ",]", "]", -1)
@@ -522,18 +526,18 @@ func (j *DSGerrit) GetGerritReviews(ctx *shared.Ctx, after, before string, after
 				if moreChanges {
 					newStartFrom = startFrom + i
 					if ctx.Debug > 0 {
-						shared.Printf("#%d) moreChanges: %v, newStartFrom: %d\n", i, moreChanges, newStartFrom)
+						j.log.WithFields(logrus.Fields{"operation": "GetGerritReviews"}).Debugf("#%d) moreChanges: %v, newStartFrom: %d", i, moreChanges, newStartFrom)
 					}
 				}
 			} else {
-				shared.Printf("cannot read boolean value from %v\n", iMoreChanges)
+				j.log.WithFields(logrus.Fields{"operation": "GetGerritReviews"}).Errorf("cannot read boolean value from %v", iMoreChanges)
 			}
 			return
 		}
 		_, ok = item["project"]
 		if !ok {
 			if ctx.Debug > 0 {
-				shared.Printf("#%d) project not found: %+v", i, item)
+				j.log.WithFields(logrus.Fields{"operation": "GetGerritReviews"}).Debugf("#%d) project not found: %+v", i, item)
 			}
 			continue
 		}
@@ -543,15 +547,15 @@ func (j *DSGerrit) GetGerritReviews(ctx *shared.Ctx, after, before string, after
 			if ok {
 				if lastUpdated < afterEpoch || lastUpdated > beforeEpoch {
 					if ctx.Debug > 1 {
-						shared.Printf("#%d) lastUpdated: %v < afterEpoch: %v or > beforeEpoch: %v, skipping\n", i, lastUpdated, afterEpoch, beforeEpoch)
+						j.log.WithFields(logrus.Fields{"operation": "GetGerritReviews"}).Debugf("#%d) lastUpdated: %v < afterEpoch: %v or > beforeEpoch: %v, skipping", i, lastUpdated, afterEpoch, beforeEpoch)
 					}
 					continue
 				}
 			} else {
-				shared.Printf("cannot read float value from %v\n", iLastUpdated)
+				j.log.WithFields(logrus.Fields{"operation": "GetGerritReviews"}).Errorf("cannot read float value from %v", iLastUpdated)
 			}
 		} else {
-			shared.Printf("cannot read lastUpdated from %v\n", item)
+			j.log.WithFields(logrus.Fields{"operation": "GetGerritReviews"}).Errorf("cannot read lastUpdated from %v", item)
 		}
 		reviews = append(reviews, item)
 	}
@@ -562,7 +566,7 @@ func (j *DSGerrit) GetGerritReviews(ctx *shared.Ctx, after, before string, after
 func (j *DSGerrit) IdentityForObject(ctx *shared.Ctx, obj map[string]interface{}) (identity [3]string) {
 	if ctx.Debug > 2 {
 		defer func() {
-			shared.Printf("%+v -> %+v\n", obj, identity)
+			j.log.WithFields(logrus.Fields{"operation": "IdentityForObject"}).Debugf("%+v -> %+v", obj, identity)
 		}()
 	}
 	item := obj
@@ -571,7 +575,7 @@ func (j *DSGerrit) IdentityForObject(ctx *shared.Ctx, obj map[string]interface{}
 		mp, ok := data.(map[string]interface{})
 		if ok {
 			if ctx.Debug > 2 {
-				shared.Printf("digged in data: %+v\n", obj)
+				j.log.WithFields(logrus.Fields{"operation": "IdentityForObject"}).Debugf("digged in data: %+v", obj)
 			}
 			item = mp
 		}
@@ -731,12 +735,12 @@ func (j *DSGerrit) ConvertDates(ctx *shared.Ctx, review map[string]interface{}) 
 func (j *DSGerrit) LastChangesetApprovalValue(ctx *shared.Ctx, patchSets []interface{}) (status interface{}) {
 	if ctx.Debug > 2 {
 		defer func() {
-			shared.Printf("LastChangesetApprovalValue: %+v -> %+v\n", patchSets, status)
+			j.log.WithFields(logrus.Fields{"operation": "LastChangesetApprovalValue"}).Debugf("LastChangesetApprovalValue: %+v -> %+v", patchSets, status)
 		}()
 	}
 	nPatchSets := len(patchSets)
 	if ctx.Debug > 2 {
-		shared.Printf("LastChangesetApprovalValue: %d patch sets\n", nPatchSets)
+		j.log.WithFields(logrus.Fields{"operation": "LastChangesetApprovalValue"}).Debugf("LastChangesetApprovalValue: %d patch sets", nPatchSets)
 	}
 	for i := nPatchSets - 1; i >= 0; i-- {
 		iPatchSet := patchSets[i]
@@ -747,7 +751,7 @@ func (j *DSGerrit) LastChangesetApprovalValue(ctx *shared.Ctx, patchSets []inter
 		iApprovals, ok := patchSet["approvals"]
 		if !ok {
 			if ctx.Debug > 2 {
-				shared.Printf("LastChangesetApprovalValue: no approvals\n")
+				j.log.WithFields(logrus.Fields{"operation": "LastChangesetApprovalValue"}).Debug("LastChangesetApprovalValue: no approvals")
 			}
 			continue
 		}
@@ -765,10 +769,10 @@ func (j *DSGerrit) LastChangesetApprovalValue(ctx *shared.Ctx, patchSets []inter
 		}
 		nApprovals := len(approvals)
 		if ctx.Debug > 2 {
-			shared.Printf("LastChangesetApprovalValue: %d approvals\n", nApprovals)
+			j.log.WithFields(logrus.Fields{"operation": "LastChangesetApprovalValue"}).Debugf("LastChangesetApprovalValue: %d approvals", nApprovals)
 		}
-		for j := nApprovals - 1; j >= 0; j-- {
-			iApproval := approvals[j]
+		for c := nApprovals - 1; c >= 0; c-- {
+			iApproval := approvals[c]
 			approval, ok := iApproval.(map[string]interface{})
 			if !ok {
 				continue
@@ -780,7 +784,7 @@ func (j *DSGerrit) LastChangesetApprovalValue(ctx *shared.Ctx, patchSets []inter
 			approvalType, ok := iApprovalType.(string)
 			if !ok || approvalType != GerritCodeReviewApprovalType {
 				if ctx.Debug > 2 {
-					shared.Printf("LastChangesetApprovalValue: incorrect type %+v\n", iApprovalType)
+					j.log.WithFields(logrus.Fields{"operation": "LastChangesetApprovalValue"}).Debugf("LastChangesetApprovalValue: incorrect type %+v", iApprovalType)
 				}
 				continue
 			}
@@ -813,7 +817,7 @@ func (j *DSGerrit) LastChangesetApprovalValue(ctx *shared.Ctx, patchSets []inter
 				status, okStatus = approval["value"]
 			}
 			if ctx.Debug > 2 {
-				shared.Printf("LastChangesetApprovalValue: final (%+v,%+v)\n", status, okStatus)
+				j.log.WithFields(logrus.Fields{"operation": "LastChangesetApprovalValue"}).Debugf("LastChangesetApprovalValue: final (%+v,%+v)", status, okStatus)
 			}
 			if okStatus && status != nil {
 				return
@@ -828,8 +832,7 @@ func (j *DSGerrit) EnrichItem(ctx *shared.Ctx, item map[string]interface{}) (ric
 	rich = make(map[string]interface{})
 	if ctx.Debug > 1 {
 		defer func() {
-			fmt.Printf("raw = %s\n", shared.PrettyPrint(item))
-			fmt.Printf("rich = %s\n", shared.PrettyPrint(rich))
+			j.log.WithFields(logrus.Fields{"operation": "EnrichItem"}).Debugf("raw = %s, rich = %s", shared.PrettyPrint(item), shared.PrettyPrint(rich))
 		}()
 	}
 	for _, field := range shared.RawFields {
@@ -868,7 +871,7 @@ func (j *DSGerrit) EnrichItem(ctx *shared.Ctx, item map[string]interface{}) (ric
 	rich["changeset_number"], _ = review["number"]
 	uuid, ok := rich["uuid"].(string)
 	if !ok {
-		err = fmt.Errorf("cannot read string uuid from %+v", shared.DumpPreview(rich, 100))
+		j.log.WithFields(logrus.Fields{"operation": "EnrichItem"}).Errorf("cannot read string uuid from %+v", shared.DumpPreview(rich, 100))
 		return
 	}
 	changesetNumber := j.ItemID(review)
@@ -1441,20 +1444,20 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 		sIID := sCsetNumber + ":" + csetHash
 		repoURL, err = j.GetProjectRepoURL(csetRepo)
 		if err != nil {
-			shared.Printf("GetProjectRepoURL(%s): %+v for %+v\n", csetRepo, err, doc)
+			j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("GetProjectRepoURL(%s): %+v for %+v", csetRepo, err, doc)
 			return
 		}
 		repoID, err = repository.GenerateRepositoryID(csetRepo, repoURL, GerritDataSource)
 		// This used Gerrit server URL instead of server URL + project
 		// shared.Printf("GenerateRepositoryID(%s,%s,%s) -> %s\n", csetRepo, j.URL, GerritDataSource, repoID)
 		if err != nil {
-			shared.Printf("GenerateRepositoryID(%s,%s,%s): %+v for %+v\n", csetRepo, repoURL, GerritDataSource, err, doc)
+			j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("GenerateRepositoryID(%s,%s,%s): %+v for %+v", csetRepo, repoURL, GerritDataSource, err, doc)
 			return
 		}
 		changesetID, err = gerrit.GenerateGerritChangesetID(repoID, sIID)
 		// shared.Printf("gerrit.GenerateGerritChangesetID(%s,%s) -> %s\n", repoID, sIID, changesetID)
 		if err != nil {
-			shared.Printf("gerrit.GenerateGerritChangesetID(%s,%s): %+v for %+v\n", repoID, sIID, err, doc)
+			j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("gerrit.GenerateGerritChangesetID(%s,%s): %+v for %+v\n", repoID, sIID, err, doc)
 			return
 		}
 		csetURL, _ := doc["url"].(string)
@@ -1480,7 +1483,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 				// name, username = shared.PostprocessNameUsername(name, username, email)
 				userID, err = user.GenerateIdentity(&source, &email, &name, &username)
 				if err != nil {
-					shared.Printf("GenerateIdentity(%s,%s,%s,%s): %+v for %+v\n", source, email, name, username, err, doc)
+					j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("GenerateIdentity source: %s, email: %s, name: %s, username: %s. error: %+v for doc: %+v", source, email, name, username, err, doc)
 					return
 				}
 				contributor := insights.Contributor{
@@ -1535,7 +1538,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 						}
 						userID, err = user.GenerateIdentity(&source, &email, &name, &username)
 						if err != nil {
-							shared.Printf("GenerateIdentity(%s,%s,%s,%s): %+v for %+v\n", source, email, name, username, err, doc)
+							j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("GenerateIdentity source: %s, email: %s, name: %s, username: %s. error: %+v for doc: %+v", source, email, name, username, err, doc)
 							return
 						}
 						contributor := insights.Contributor{
@@ -1561,7 +1564,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 					patchsetID, err = gerrit.GenerateGerritPatchsetID(changesetID, patchsetSID)
 					// shared.Printf("gerrit.GenerateGerritPatchsetID(%s,%s) -> %s\n", changesetID, patchsetSID, patchsetID)
 					if err != nil {
-						shared.Printf("gerrit.GenerateGerritPatchsetID(%s,%s): %+v for %+v\n", changesetID, patchsetSID, err, doc)
+						j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("GenerateGerritPatchsetID changeset id: %s, patchset id: %s. error: %+v for doc: %+v", changesetID, patchsetSID, err, doc)
 						return
 					}
 					patchset := gerrit.Patchset{
@@ -1595,10 +1598,10 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 						var e error
 						reviewState, e = strconv.ParseInt(sReviewState, 10, 64)
 						if e != nil {
-							shared.Printf("WARNING: invalid review state: '%s' in %+v, assuming value 0\n", sReviewState, obj)
+							j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Warningf("invalid review state: '%s' in %+v, assuming value 0", sReviewState, obj)
 						}
 					} else {
-						shared.Printf("WARNING: empty review state in %+v, assuming value 0\n", obj)
+						j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Warningf("empty review state in %+v, assuming value 0", obj)
 					}
 					reviewCreatedOn, _ := obj["approval_granted_on"].(time.Time)
 					if reviewCreatedOn.After(updatedOn) {
@@ -1614,7 +1617,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 					patchsetID, err = gerrit.GenerateGerritPatchsetID(changesetID, patchsetSID)
 					// shared.Printf("in approval gerrit.GenerateGerritPatchsetID(%s,%s) -> %s\n", changesetID, patchsetSID, patchsetID)
 					if err != nil {
-						shared.Printf("gerrit.GenerateGerritPatchsetID(%s,%s): %+v for %+v\n", changesetID, patchsetSID, err, doc)
+						j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("GenerateGerritPatchsetID changeset id: %s patchset id: %s.error: %+v for doc: %+v", changesetID, patchsetSID, err, doc)
 						return
 					}
 					for _, role := range roles {
@@ -1629,7 +1632,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 						// name, username = shared.PostprocessNameUsername(name, username, email)
 						userID, err = user.GenerateIdentity(&source, &email, &name, &username)
 						if err != nil {
-							shared.Printf("GenerateIdentity(%s,%s,%s,%s): %+v for %+v\n", source, email, name, username, err, doc)
+							j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("GenerateIdentity source: %s, email: %s, name: %s, username: %s.error: %+v for doc: %+v", source, email, name, username, err, doc)
 							return
 						}
 						role := insights.ReviewerRole
@@ -1651,7 +1654,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 						approvalID, err = gerrit.GenerateGerritApprovalID(patchsetID, approvalSID)
 						// shared.Printf("gerrit.GenerateGerritApprovalID(%s,%s) -> %s\n", patchsetID, approvalSID, approvalID)
 						if err != nil {
-							shared.Printf("gerrit.GenerateGerritApprovalID(%s,%s): %+v for %+v\n", patchsetID, approvalSID, err, doc)
+							j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("GenerateGerritApprovalID patchset id: %s, approval id: %s.error: %+v for doc: %+v", patchsetID, approvalSID, err, doc)
 							return
 						}
 						// If we want to add approver as a contributor on the changeset object
@@ -1711,7 +1714,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 					//name, username = shared.PostprocessNameUsername(name, username, email)
 					userID, err = user.GenerateIdentity(&source, &email, &name, &username)
 					if err != nil {
-						shared.Printf("GenerateIdentity(%s,%s,%s,%s): %+v for %+v\n", source, email, name, username, err, doc)
+						j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("GenerateIdentity(%s,%s,%s,%s): %+v for %+v", source, email, name, username, err, doc)
 						return
 					}
 					contributor := insights.Contributor{
@@ -1730,7 +1733,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 						commentID, err = gerrit.GenerateGerritChangesetCommentID(repoID, sCommentID)
 						// shared.Printf("gerrit.GenerateGerritChangesetCommentID(%s,%s) -> %s\n", repoID, sCommentID, commentID)
 						if err != nil {
-							shared.Printf("gerrit.GenerateGerritChangesetCommentID(%s,%s): %+v for %+v\n", repoID, sCommentID, err, doc)
+							j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("GenerateGerritChangesetCommentID(%s,%s): %+v for %+v", repoID, sCommentID, err, doc)
 							return
 						}
 						// If we want to add comments as a contributor on the changeset object
@@ -1761,14 +1764,14 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 						commentID, err = gerrit.GenerateGerritPatchsetCommentID(repoID, sCommentID)
 						// shared.Printf("gerrit.GenerateGerritPatchsetCommentID(%s,%s) -> %s\n", repoID, sCommentID, commentID)
 						if err != nil {
-							shared.Printf("gerrit.GenerateGerritPatchsetCommentID(%s,%s): %+v for %+v\n", repoID, sCommentID, err, doc)
+							j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("GenerateGerritPatchsetCommentID(%s,%s): %+v for %+v", repoID, sCommentID, err, doc)
 							return
 						}
 						patchsetSID, _ := comment["patchset_sid"].(string)
 						patchID, err = gerrit.GenerateGerritPatchsetID(changesetID, patchsetSID)
 						// shared.Printf("in approval gerrit.GenerateGerritPatchsetID(%s,%s) -> %s\n", changesetID, patchsetSID, patchID)
 						if err != nil {
-							shared.Printf("gerrit.GenerateGerritPatchsetID(%s,%s): %+v for %+v\n", changesetID, patchsetSID, err, doc)
+							j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("GenerateGerritPatchsetID(%s,%s): %+v for %+v", changesetID, patchsetSID, err, doc)
 							return
 						}
 						// If we want to add comments as a contributor on the changeset object
@@ -1867,11 +1870,11 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 // items is a current pack of input items
 // docs is a pointer to where extracted identities will be stored
 func (j *DSGerrit) GerritEnrichItems(ctx *shared.Ctx, thrN int, items []interface{}, docs *[]interface{}, final bool) (err error) {
-	shared.Printf("input processing(%d/%d/%v)\n", len(items), len(*docs), final)
+	j.log.WithFields(logrus.Fields{"operation": "GerritEnrichItems"}).Infof("input processing(%d/%d/%v)", len(items), len(*docs), final)
 	outputDocs := func() {
 		if len(*docs) > 0 {
 			// actual output
-			shared.Printf("output processing(%d/%d/%v)\n", len(items), len(*docs), final)
+			j.log.WithFields(logrus.Fields{"operation": "GerritEnrichItems"}).Infof("output processing(%d/%d/%v)", len(items), len(*docs), final)
 			var (
 				reviewsData map[string][]interface{}
 				jsonBytes   []byte
@@ -1918,11 +1921,11 @@ func (j *DSGerrit) GerritEnrichItems(ctx *shared.Ctx, thrN int, items []interfac
 				}
 			}
 			if err != nil {
-				shared.Printf("Error: %+v\n", err)
+				j.log.WithFields(logrus.Fields{"operation": "GerritEnrichItems"}).Errorf("Error: %+v", err)
 				return
 			}
 			if j.Publisher == nil {
-				shared.Printf("%s\n", string(jsonBytes))
+				j.log.WithFields(logrus.Fields{"operation": "GerritEnrichItems"}).Warningf("%s", string(jsonBytes))
 			}
 			*docs = []interface{}{}
 			gMaxUpstreamDtMtx.Lock()
@@ -1937,7 +1940,7 @@ func (j *DSGerrit) GerritEnrichItems(ctx *shared.Ctx, thrN int, items []interfac
 	}
 	// NOTE: non-generic code starts
 	if ctx.Debug > 0 {
-		shared.Printf("gerrit enrich items %d/%d func\n", len(items), len(*docs))
+		j.log.WithFields(logrus.Fields{"operation": "GerritEnrichItems"}).Debugf("gerrit enrich items %d/%d func", len(items), len(*docs))
 	}
 	var (
 		mtx *sync.RWMutex
@@ -2123,16 +2126,16 @@ func (j *DSGerrit) AddMetadata(ctx *shared.Ctx, item interface{}) (mItem map[str
 func (j *DSGerrit) Sync(ctx *shared.Ctx) (err error) {
 	thrN := shared.GetThreadsNum(ctx)
 	if ctx.DateFrom != nil {
-		shared.Printf("%s fetching from %v (%d threads)\n", j.URL, ctx.DateFrom, thrN)
+		j.log.WithFields(logrus.Fields{"operation": "Sync"}).Infof("%s fetching from %v (%d threads)", j.URL, ctx.DateFrom, thrN)
 	}
 	if ctx.DateFrom == nil {
 		ctx.DateFrom = shared.GetLastUpdate(ctx, j.URL)
 		if ctx.DateFrom != nil {
-			shared.Printf("%s resuming from %v (%d threads)\n", j.URL, ctx.DateFrom, thrN)
+			j.log.WithFields(logrus.Fields{"operation": "Sync"}).Infof("%s resuming from %v (%d threads)", j.URL, ctx.DateFrom, thrN)
 		}
 	}
 	if ctx.DateTo != nil {
-		shared.Printf("%s fetching till %v (%d threads)\n", j.URL, ctx.DateTo, thrN)
+		j.log.WithFields(logrus.Fields{"operation": "Sync"}).Infof("%s fetching till %v (%d threads)", j.URL, ctx.DateTo, thrN)
 	}
 	// NOTE: Non-generic starts here
 	err = j.InitGerrit(ctx)
@@ -2142,7 +2145,7 @@ func (j *DSGerrit) Sync(ctx *shared.Ctx) (err error) {
 	if j.SSHKeyTempPath != "" {
 		cleanup := func() {
 			if ctx.Debug > 0 {
-				shared.Printf("removing temporary SSH key %s\n", j.SSHKeyTempPath)
+				j.log.WithFields(logrus.Fields{"operation": "Sync"}).Debugf("removing temporary SSH key %s", j.SSHKeyTempPath)
 			}
 			_ = os.Remove(j.SSHKeyTempPath)
 		}
@@ -2223,7 +2226,7 @@ func (j *DSGerrit) Sync(ctx *shared.Ctx) (err error) {
 				ee = j.GerritEnrichItems(ctx, thrN, allReviews, &allDocs, false)
 				// ee = SendToQueue(ctx, j, true, UUID, allReviews)
 				if ee != nil {
-					shared.Printf("error %v sending %d reviews to queue\n", ee, len(allReviews))
+					j.log.WithFields(logrus.Fields{"operation": "Sync"}).Errorf("error %v sending %d reviews to queue", ee, len(allReviews))
 				}
 				allReviews = []interface{}{}
 				if allReviewsMtx != nil {
@@ -2264,7 +2267,7 @@ func (j *DSGerrit) Sync(ctx *shared.Ctx) (err error) {
 					)
 					esch, e = processReview(ch, review)
 					if e != nil {
-						shared.Printf("process error: %v\n", e)
+						j.log.WithFields(logrus.Fields{"operation": "Sync"}).Errorf("process error: %v", e)
 						return
 					}
 					if esch != nil {
@@ -2332,13 +2335,13 @@ func (j *DSGerrit) Sync(ctx *shared.Ctx) (err error) {
 	}
 	nReviews := len(allReviews)
 	if ctx.Debug > 0 {
-		shared.Printf("%d remaining reviews to send to queue\n", nReviews)
+		j.log.WithFields(logrus.Fields{"operation": "Sync"}).Debugf("%d remaining reviews to send to queue", nReviews)
 	}
 	// NOTE: for all items, even if 0 - to flush the queue
 	err = j.GerritEnrichItems(ctx, thrN, allReviews, &allDocs, true)
 	//err = SendToQueue(ctx, j, true, UUID, allReviews)
 	if err != nil {
-		shared.Printf("Error %v sending %d reviews to queue\n", err, len(allReviews))
+		j.log.WithFields(logrus.Fields{"operation": "Sync"}).Errorf("Error %v sending %d reviews to queue", err, len(allReviews))
 	}
 	// NOTE: Non-generic ends here
 	gMaxUpstreamDtMtx.Lock()
@@ -2354,7 +2357,7 @@ func main() {
 	)
 	err := gerrit.Init(&ctx)
 	if err != nil {
-		shared.Printf("Error: %+v\n", err)
+		gerrit.log.WithFields(logrus.Fields{"operation": "main"}).Errorf("Error: %+v", err)
 		return
 	}
 	timestamp := time.Now()
@@ -2364,9 +2367,23 @@ func main() {
 	gerrit.WriteLog(&ctx, timestamp, logger.InProgress, "")
 	err = gerrit.Sync(&ctx)
 	if err != nil {
-		shared.Printf("Error: %+v\n", err)
+		gerrit.log.WithFields(logrus.Fields{"operation": "main"}).Errorf("Error: %+v", err)
 		gerrit.WriteLog(&ctx, timestamp, logger.Failed, err.Error())
 		return
 	}
 	gerrit.WriteLog(&ctx, timestamp, logger.Done, "")
+}
+
+// createStructuredLogger...
+func (j *DSGerrit) createStructuredLogger(ctx *shared.Ctx) {
+	log := logrus.WithFields(
+		logrus.Fields{
+			"environment": os.Getenv("STAGE"),
+			"commit":      build.GitCommit,
+			"version":     build.Version,
+			"service":     build.AppName,
+			"endpoint":    j.URL,
+			"project":     ctx.Project,
+		})
+	j.log = log
 }
