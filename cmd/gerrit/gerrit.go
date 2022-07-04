@@ -415,7 +415,6 @@ func (j *DSGerrit) Init(ctx *shared.Ctx) (err error) {
 	ctx.InitEnv("Gerrit")
 	j.AddFlags()
 	ctx.Init()
-	j.createStructuredLogger(ctx)
 	err = j.ParseArgs(ctx)
 	if err != nil {
 		return
@@ -2355,6 +2354,7 @@ func main() {
 		ctx    shared.Ctx
 		gerrit DSGerrit
 	)
+	gerrit.createStructuredLogger()
 	err := gerrit.Init(&ctx)
 	if err != nil {
 		gerrit.log.WithFields(logrus.Fields{"operation": "main"}).Errorf("Error: %+v", err)
@@ -2375,7 +2375,7 @@ func main() {
 }
 
 // createStructuredLogger...
-func (j *DSGerrit) createStructuredLogger(ctx *shared.Ctx) {
+func (j *DSGerrit) createStructuredLogger() {
 	logrus.SetFormatter(&logrus.JSONFormatter{})
 	log := logrus.WithFields(
 		logrus.Fields{
@@ -2384,7 +2384,6 @@ func (j *DSGerrit) createStructuredLogger(ctx *shared.Ctx) {
 			"version":     build.Version,
 			"service":     build.AppName,
 			"endpoint":    j.URL,
-			"project":     ctx.Project,
 		})
 	j.log = log
 }
