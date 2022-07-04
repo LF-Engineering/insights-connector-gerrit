@@ -2376,6 +2376,10 @@ func main() {
 
 // createStructuredLogger...
 func (j *DSGerrit) createStructuredLogger() {
+	url := ""
+	if *j.FlagURL != "" {
+		url = *j.FlagURL
+	}
 	logrus.SetFormatter(&logrus.JSONFormatter{})
 	log := logrus.WithFields(
 		logrus.Fields{
@@ -2383,7 +2387,7 @@ func (j *DSGerrit) createStructuredLogger() {
 			"commit":      build.GitCommit,
 			"version":     build.Version,
 			"service":     build.AppName,
-			"endpoint":    j.URL,
+			"endpoint":    url,
 		})
 	j.log = log
 }
