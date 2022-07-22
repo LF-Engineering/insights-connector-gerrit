@@ -1239,8 +1239,9 @@ func (j *DSGerrit) GetProjectRepoURL(project string) (string, error) {
 	// FIXME: based on Fayaz comment, we probably need to catch more cases in different Gerrit instances
 	rPartial := strings.TrimSpace("https://" + j.URL + "/r/admin/repos/" + project)
 	gerritPartial := strings.TrimSpace("https://" + j.URL + "/gerrit/admin/repos/" + project)
-	partialsList := []string{rPartial, gerritPartial}
-	httpClient := http.NewClientProvider(time.Second * 60)
+	noPartial := strings.TrimSpace("https://" + j.URL + "/admin/repos/" + project)
+	partialsList := []string{rPartial, gerritPartial, noPartial}
+	httpClient := http.NewClientProvider(time.Second*60, false)
 
 	for _, partial := range partialsList {
 		statusCode, _, err := httpClient.Request(partial, http1.MethodGet, nil, nil, nil)
@@ -1250,6 +1251,11 @@ func (j *DSGerrit) GetProjectRepoURL(project string) (string, error) {
 
 		if statusCode == http1.StatusNotFound {
 			// shared.Printf("url %+v \n %+v", partial, string(res))
+			continue
+		}
+
+		// handle redirect codes
+		if statusCode == http1.StatusTemporaryRedirect || statusCode == http1.StatusPermanentRedirect || statusCode == http1.StatusFound || statusCode == http1.StatusMovedPermanently {
 			continue
 		}
 
