@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/LF-Engineering/insights-datasource-gerrit/build"
+	"github.com/LF-Engineering/insights-datasource-shared/cache"
 	"github.com/sirupsen/logrus"
 	"io/ioutil"
 	http1 "net/http"
@@ -107,9 +108,11 @@ type DSGerrit struct {
 	VersionMinor   int      // gerrit minor version
 	// Publisher & stream
 	Publisher
-	Stream string // stream to publish the data
-	Logger logger.Logger
-	log    *logrus.Entry
+	Stream        string // stream to publish the data
+	Logger        logger.Logger
+	log           *logrus.Entry
+	cacheProvider cache.Manager
+	endpoint      string
 }
 
 // AddPublisher - sets Kinesis publisher
@@ -1936,7 +1939,10 @@ func (j *DSGerrit) GerritEnrichItems(ctx *shared.Ctx, thrN int, items []interfac
 			*docs = []interface{}{}
 			gMaxUpstreamDtMtx.Lock()
 			defer gMaxUpstreamDtMtx.Unlock()
-			shared.SetLastUpdate(ctx, j.URL, gMaxUpstreamDt)
+			err = j.cacheProvider.SetLastSync(j.endpoint, gMaxUpstreamDt)
+			if err != nil {
+				j.log.WithFields(logrus.Fields{"operation": "GerritEnrichItems"}).Errorf("unable to set last sync date to cache.error: %v", err)
+			}
 		}
 	}
 	if final {
@@ -2135,7 +2141,12 @@ func (j *DSGerrit) Sync(ctx *shared.Ctx) (err error) {
 		j.log.WithFields(logrus.Fields{"operation": "Sync"}).Infof("%s fetching from %v (%d threads)", j.URL, ctx.DateFrom, thrN)
 	}
 	if ctx.DateFrom == nil {
-		ctx.DateFrom = shared.GetLastUpdate(ctx, j.URL)
+		cachedLastSync, er := j.cacheProvider.GetLastSync(j.endpoint)
+		if er != nil {
+			err = er
+			return
+		}
+		ctx.DateFrom = &cachedLastSync
 		if ctx.DateFrom != nil {
 			j.log.WithFields(logrus.Fields{"operation": "Sync"}).Infof("%s resuming from %v (%d threads)", j.URL, ctx.DateFrom, thrN)
 		}
@@ -2352,7 +2363,10 @@ func (j *DSGerrit) Sync(ctx *shared.Ctx) (err error) {
 	// NOTE: Non-generic ends here
 	gMaxUpstreamDtMtx.Lock()
 	defer gMaxUpstreamDtMtx.Unlock()
-	shared.SetLastUpdate(ctx, j.URL, gMaxUpstreamDt)
+	err = j.cacheProvider.SetLastSync(j.endpoint, gMaxUpstreamDt)
+	if err != nil {
+		j.log.WithFields(logrus.Fields{"operation": "Sync"}).Errorf("unable to set last sync date to cache.error: %v", err)
+	}
 	return
 }
 
@@ -2371,6 +2385,7 @@ func main() {
 	shared.SetLogLoggerError(false)
 	shared.AddLogger(&gerrit.Logger, GerritDataSource, logger.Internal, []map[string]string{{"GERRIT_URL": gerrit.URL, "GERRIT_PROJECT": ctx.Project, "ProjectSlug": ctx.Project}})
 	gerrit.WriteLog(&ctx, timestamp, logger.InProgress, "")
+	gerrit.AddCacheProvider()
 	err = gerrit.Sync(&ctx)
 	if err != nil {
 		gerrit.log.WithFields(logrus.Fields{"operation": "main"}).Errorf("Error: %+v", err)
@@ -2393,4 +2408,11 @@ func (j *DSGerrit) createStructuredLogger(ctx *shared.Ctx) {
 			"project":     ctx.Project,
 		})
 	j.log = log
+}
+
+// AddCacheProvider - adds cache provider
+func (j *DSGerrit) AddCacheProvider() {
+	cacheProvider := cache.NewManager(GerritDataSource, os.Getenv("STAGE"))
+	j.cacheProvider = *cacheProvider
+	j.endpoint = strings.ReplaceAll(strings.TrimPrefix(strings.TrimPrefix(j.URL, "https://"), "http://"), "/", "-")
 }
