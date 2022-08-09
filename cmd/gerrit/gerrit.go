@@ -6,11 +6,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/LF-Engineering/insights-datasource-gerrit/build"
-	"github.com/LF-Engineering/insights-datasource-shared/cache"
-	"github.com/sirupsen/logrus"
 	"io/ioutil"
-	http1 "net/http"
 	"os"
 	"os/signal"
 	"regexp"
@@ -20,23 +16,24 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/LF-Engineering/insights-datasource-gerrit/build"
+	shared "github.com/LF-Engineering/insights-datasource-shared"
+	"github.com/LF-Engineering/insights-datasource-shared/aws"
+	"github.com/LF-Engineering/insights-datasource-shared/cache"
+	"github.com/LF-Engineering/insights-datasource-shared/cryptography"
+	elastic "github.com/LF-Engineering/insights-datasource-shared/elastic"
+	"github.com/LF-Engineering/insights-datasource-shared/http"
+	logger "github.com/LF-Engineering/insights-datasource-shared/ingestjob"
 	"github.com/LF-Engineering/lfx-event-schema/service"
 	"github.com/LF-Engineering/lfx-event-schema/service/insights"
 	"github.com/LF-Engineering/lfx-event-schema/service/insights/gerrit"
 	"github.com/LF-Engineering/lfx-event-schema/service/repository"
 	"github.com/LF-Engineering/lfx-event-schema/service/user"
 	"github.com/LF-Engineering/lfx-event-schema/utils/datalake"
-
-	shared "github.com/LF-Engineering/insights-datasource-shared"
-	"github.com/LF-Engineering/insights-datasource-shared/cryptography"
-	elastic "github.com/LF-Engineering/insights-datasource-shared/elastic"
-	"github.com/LF-Engineering/insights-datasource-shared/http"
-	logger "github.com/LF-Engineering/insights-datasource-shared/ingestjob"
-
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
-
 	jsoniter "github.com/json-iterator/go"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -152,7 +149,7 @@ func (j *DSGerrit) AddLogger(ctx *shared.Ctx) {
 
 // WriteLog - writes to log
 func (j *DSGerrit) WriteLog(ctx *shared.Ctx, timestamp time.Time, status, message string) error {
-	arn, err := getContainerMetadata()
+	arn, err := aws.GetContainerARN()
 	if err != nil {
 		j.log.WithFields(logrus.Fields{"operation": "WriteLog"}).Errorf("getContainerMetadata Error : %+v", err)
 		return err
@@ -2653,25 +2650,6 @@ func (j *DSGerrit) AddCacheProvider() {
 	j.endpoint = strings.ReplaceAll(strings.TrimPrefix(strings.TrimPrefix(j.URL, "https://"), "http://"), "/", "-")
 }
 
-func getContainerMetadata() (string, error) {
-	httpClient := http.NewClientProvider(60*time.Second, true)
-	statusCode, res, err := httpClient.Request(fmt.Sprintf("%s/task", os.Getenv("ECS_CONTAINER_METADATA_URI_V4")), "GET", nil, nil, nil)
-	if err != nil {
-		return "", err
-	}
-	if statusCode > 200 {
-		return "", fmt.Errorf("getContainerMetadata error: status code is %d", statusCode)
-	}
-
-	metaResponse := ContainerMetadata{}
-	err = json.Unmarshal(res, &metaResponse)
-	if err != nil {
-		return "", err
-	}
-
-	return metaResponse.TaskARN, nil
-}
-
 // Patches ...
 type Patches struct {
 	Patches []string
@@ -2691,9 +2669,4 @@ type ReviewComments struct {
 type Comment struct {
 	ID   string `json:"id"`
 	Body string `json:"body"`
-}
-
-// ContainerMetadata ...
-type ContainerMetadata struct {
-	TaskARN string `json:"TaskARN"`
 }
