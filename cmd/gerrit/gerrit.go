@@ -150,12 +150,12 @@ func (j *DSGerrit) AddLogger(ctx *shared.Ctx) {
 
 // WriteLog - writes to log
 func (j *DSGerrit) WriteLog(ctx *shared.Ctx, timestamp time.Time, status, message string) error {
-	arn, _ := aws.GetContainerARN()
-	/*	if err != nil {
+	arn, err := aws.GetContainerARN()
+	if err != nil {
 		j.log.WithFields(logrus.Fields{"operation": "WriteLog"}).Errorf("getContainerMetadata Error : %+v", err)
 		return err
-	}*/
-	_ = j.Logger.Write(&logger.Log{
+	}
+	err = j.Logger.Write(&logger.Log{
 		Connector: GerritDataSource,
 		TaskARN:   arn,
 		Configuration: []map[string]string{
@@ -168,7 +168,7 @@ func (j *DSGerrit) WriteLog(ctx *shared.Ctx, timestamp time.Time, status, messag
 		CreatedAt: timestamp,
 		Message:   message,
 	})
-	return nil
+	return err
 }
 
 // AddFlags - add Gerrit specific flags
