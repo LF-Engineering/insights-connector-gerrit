@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	http1 "net/http"
 	"os"
 	"os/signal"
 	"regexp"
