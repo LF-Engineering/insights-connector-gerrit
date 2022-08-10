@@ -150,12 +150,12 @@ func (j *DSGerrit) AddLogger(ctx *shared.Ctx) {
 
 // WriteLog - writes to log
 func (j *DSGerrit) WriteLog(ctx *shared.Ctx, timestamp time.Time, status, message string) error {
-	arn, err := aws.GetContainerARN()
-	if err != nil {
+	arn, _ := aws.GetContainerARN()
+	/*	if err != nil {
 		j.log.WithFields(logrus.Fields{"operation": "WriteLog"}).Errorf("getContainerMetadata Error : %+v", err)
 		return err
-	}
-	err = j.Logger.Write(&logger.Log{
+	}*/
+	_ = j.Logger.Write(&logger.Log{
 		Connector: GerritDataSource,
 		TaskARN:   arn,
 		Configuration: []map[string]string{
@@ -168,7 +168,7 @@ func (j *DSGerrit) WriteLog(ctx *shared.Ctx, timestamp time.Time, status, messag
 		CreatedAt: timestamp,
 		Message:   message,
 	})
-	return err
+	return nil
 }
 
 // AddFlags - add Gerrit specific flags
@@ -1387,6 +1387,25 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 					})
 				}
 				data[k] = ary
+			case "changeset_comment_edited":
+				baseEvent := service.BaseEvent{
+					Type: service.EventType(gerrit.ChangesetCommentEditedEvent{}.Event()),
+					CRUDInfo: service.CRUDInfo{
+						CreatedBy: GerritConnector,
+						UpdatedBy: GerritConnector,
+						CreatedAt: time.Now().Unix(),
+						UpdatedAt: time.Now().Unix(),
+					},
+				}
+				ary := []interface{}{}
+				for _, changesetComment := range v {
+					ary = append(ary, gerrit.ChangesetCommentEditedEvent{
+						ChangesetCommentBaseEvent: changesetCommentBaseEvent,
+						BaseEvent:                 baseEvent,
+						Payload:                   changesetComment.(gerrit.ChangesetComment),
+					})
+				}
+				data[k] = ary
 			case "patchset_comment_added":
 				baseEvent := service.BaseEvent{
 					Type: service.EventType(gerrit.PatchsetCommentAddedEvent{}.Event()),
@@ -1400,6 +1419,25 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 				ary := []interface{}{}
 				for _, patchsetComment := range v {
 					ary = append(ary, gerrit.PatchsetCommentAddedEvent{
+						PatchsetCommentBaseEvent: patchsetCommentBaseEvent,
+						BaseEvent:                baseEvent,
+						Payload:                  patchsetComment.(gerrit.PatchsetComment),
+					})
+				}
+				data[k] = ary
+			case "patchset_comment_edited":
+				baseEvent := service.BaseEvent{
+					Type: service.EventType(gerrit.PatchsetCommentEditedEvent{}.Event()),
+					CRUDInfo: service.CRUDInfo{
+						CreatedBy: GerritConnector,
+						UpdatedBy: GerritConnector,
+						CreatedAt: time.Now().Unix(),
+						UpdatedAt: time.Now().Unix(),
+					},
+				}
+				ary := []interface{}{}
+				for _, patchsetComment := range v {
+					ary = append(ary, gerrit.PatchsetCommentEditedEvent{
 						PatchsetCommentBaseEvent: patchsetCommentBaseEvent,
 						BaseEvent:                baseEvent,
 						Payload:                  patchsetComment.(gerrit.PatchsetComment),
@@ -1425,6 +1463,25 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 					})
 				}
 				data[k] = ary
+			case "approval_removed":
+				baseEvent := service.BaseEvent{
+					Type: service.EventType(gerrit.ApprovalRemovedEvent{}.Event()),
+					CRUDInfo: service.CRUDInfo{
+						CreatedBy: GerritConnector,
+						UpdatedBy: GerritConnector,
+						CreatedAt: time.Now().Unix(),
+						UpdatedAt: time.Now().Unix(),
+					},
+				}
+				ary := []interface{}{}
+				for _, approval := range v {
+					ary = append(ary, gerrit.ApprovalRemovedEvent{
+						ApprovalBaseEvent: approvalBaseEvent,
+						BaseEvent:         baseEvent,
+						Payload:           approval.(gerrit.Approval),
+					})
+				}
+				data[k] = ary
 			case "patchset_added":
 				baseEvent := service.BaseEvent{
 					Type: service.EventType(gerrit.PatchsetAddedEvent{}.Event()),
@@ -1438,6 +1495,25 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 				ary := []interface{}{}
 				for _, patchset := range v {
 					ary = append(ary, gerrit.PatchsetAddedEvent{
+						PatchsetBaseEvent: patchsetBaseEvent,
+						BaseEvent:         baseEvent,
+						Payload:           patchset.(gerrit.Patchset),
+					})
+				}
+				data[k] = ary
+			case "patchset_removed":
+				baseEvent := service.BaseEvent{
+					Type: service.EventType(gerrit.PatchsetRemovedEvent{}.Event()),
+					CRUDInfo: service.CRUDInfo{
+						CreatedBy: GerritConnector,
+						UpdatedBy: GerritConnector,
+						CreatedAt: time.Now().Unix(),
+						UpdatedAt: time.Now().Unix(),
+					},
+				}
+				ary := []interface{}{}
+				for _, patchset := range v {
+					ary = append(ary, gerrit.PatchsetRemovedEvent{
 						PatchsetBaseEvent: patchsetBaseEvent,
 						BaseEvent:         baseEvent,
 						Payload:           patchset.(gerrit.Patchset),
@@ -1765,6 +1841,27 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 							return
 						}
 					}
+					for _, oa := range oldApprovals.Approvals {
+						found := false
+						approval := gerrit.Approval{}
+						for apID, ad := range approvalsAdded {
+							if apID == oa {
+								found = true
+								approval = ad
+								break
+							}
+						}
+						if !found {
+							key := "approval_removed"
+							ary, ok := data[key]
+							if !ok {
+								ary = []interface{}{approval}
+							} else {
+								ary = append(ary, approval)
+							}
+							data[key] = ary
+						}
+					}
 
 				}
 			}
@@ -1806,6 +1903,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 				return
 			}
 		}
+
 		// patchsets and approvals end
 		// comments start
 		changesetCommentsCacheID := fmt.Sprintf("%s-%s-comments", ChangeSet, changesetID)
@@ -2136,14 +2234,26 @@ func (j *DSGerrit) GerritEnrichItems(ctx *shared.Ctx, thrN int, items []interfac
 						case "changeset_comment_added":
 							ev, _ := v[0].(gerrit.ChangesetCommentAddedEvent)
 							err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
+						case "changeset_comment_edited":
+							ev, _ := v[0].(gerrit.ChangesetCommentEditedEvent)
+							err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
 						case "patchset_comment_added":
 							ev, _ := v[0].(gerrit.PatchsetCommentAddedEvent)
+							err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
+						case "patchset_comment_edited":
+							ev, _ := v[0].(gerrit.PatchsetCommentEditedEvent)
 							err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
 						case "approval_added":
 							ev, _ := v[0].(gerrit.ApprovalAddedEvent)
 							err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
+						case "approval_removed":
+							ev, _ := v[0].(gerrit.ApprovalRemovedEvent)
+							err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
 						case "patchset_added":
 							ev, _ := v[0].(gerrit.PatchsetAddedEvent)
+							err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
+						case "patchset_removed":
+							ev, _ := v[0].(gerrit.PatchsetRemovedEvent)
 							err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
 						default:
 							err = fmt.Errorf("unknown event type '%s'", k)
