@@ -1887,7 +1887,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 				data[key] = ary
 			}
 		}
-		if len(patchSets) > 0 || patchSets != nil {
+		if len(patchSets) > 0 || oldPatchSets.Patches != nil {
 			var updatedPatches Patches
 			for as := range patchSets {
 				updatedPatches.Patches = append(updatedPatches.Patches, as)
@@ -2106,26 +2106,30 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 				}
 			}
 		}
-		b, er := json.Marshal(oldChangesetComments)
-		if er != nil {
-			err = er
-			j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("error marshal updated changeset comments cache. comments data: %+v, error: %v", oldChangesetComments, err)
-			return
-		}
-		if err = j.cacheProvider.UpdateFileByKey(j.endpoint, changesetCommentsCacheID, b); err != nil {
-			j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("UpdateFileByKey error update changeset comments cache. path: %s, cache id: %s, comments data: %v, error: %v", j.endpoint, changesetCommentsCacheID, b, err)
-			return
+		if len(oldChangesetComments.Comments) > 0 {
+			b, er := json.Marshal(oldChangesetComments)
+			if er != nil {
+				err = er
+				j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("error marshal updated changeset comments cache. comments data: %+v, error: %v", oldChangesetComments, err)
+				return
+			}
+			if err = j.cacheProvider.UpdateFileByKey(j.endpoint, changesetCommentsCacheID, b); err != nil {
+				j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("UpdateFileByKey error update changeset comments cache. path: %s, cache id: %s, comments data: %v, error: %v", j.endpoint, changesetCommentsCacheID, b, err)
+				return
+			}
 		}
 
-		b, er = json.Marshal(oldpatchsetComments)
-		if er != nil {
-			err = er
-			j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("error marshal updated patcheset comments cache. comments data: %+v, error: %v", oldpatchsetComments, err)
-			return
-		}
-		if err = j.cacheProvider.UpdateFileByKey(j.endpoint, patchsetCommentsCacheID, b); err != nil {
-			j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("UpdateFileByKey error update patchset comments cache. path: %s, cache id: %s, comments data: %v, error: %v", j.endpoint, patchsetCommentsCacheID, b, err)
-			return
+		if len(oldpatchsetComments.Comments) > 0 {
+			b, er := json.Marshal(oldpatchsetComments)
+			if er != nil {
+				err = er
+				j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("error marshal updated patcheset comments cache. comments data: %+v, error: %v", oldpatchsetComments, err)
+				return
+			}
+			if err = j.cacheProvider.UpdateFileByKey(j.endpoint, patchsetCommentsCacheID, b); err != nil {
+				j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("UpdateFileByKey error update patchset comments cache. path: %s, cache id: %s, comments data: %v, error: %v", j.endpoint, patchsetCommentsCacheID, b, err)
+				return
+			}
 		}
 		// comments end
 		// shared.Printf("(repo,repourl,cseturl,summary,siid,closed,merged)=('%s','%s','%s','%s','%s',(%v,%v),(%v,%v))\n", csetRepo, repoURL, csetURL, csetSummary, sIID, isClosed, closedOn, isMerged, mergedOn)
