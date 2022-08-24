@@ -1850,14 +1850,14 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 					for _, oa := range oldApprovals.Approvals {
 						found := false
 						approval := gerrit.Approval{}
-						for apID, ad := range approvalsAdded {
+						for apID := range approvalsAdded {
 							if apID == oa {
 								found = true
-								approval = ad
 								break
 							}
 						}
 						if !found {
+							approval.ApprovalID = oa
 							key := "approval_removed"
 							ary, ok := data[key]
 							if !ok {
