@@ -6,6 +6,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/LF-Engineering/insights-datasource-shared/aws"
 	"io/ioutil"
 	http1 "net/http"
 	"os"
@@ -149,9 +150,7 @@ func (j *DSGerrit) AddLogger(ctx *shared.Ctx) {
 
 // WriteLog - writes to log
 func (j *DSGerrit) WriteLog(ctx *shared.Ctx, timestamp time.Time, status, message string) error {
-	//arn, err := aws.GetContainerARN()
-	var err error
-	arn := "arn:aws:ecs:us-east-2:395594542180:task/insights-ecs-cluster/0f12976f3fac4272989a79862eb97931"
+	arn, err := aws.GetContainerARN()
 	if err != nil {
 		j.log.WithFields(logrus.Fields{"operation": "WriteLog"}).Errorf("getContainerMetadata Error : %+v", err)
 		return err
