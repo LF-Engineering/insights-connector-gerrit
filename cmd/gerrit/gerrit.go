@@ -19,7 +19,6 @@ import (
 
 	"github.com/LF-Engineering/insights-datasource-gerrit/build"
 	shared "github.com/LF-Engineering/insights-datasource-shared"
-	"github.com/LF-Engineering/insights-datasource-shared/aws"
 	"github.com/LF-Engineering/insights-datasource-shared/cache"
 	"github.com/LF-Engineering/insights-datasource-shared/cryptography"
 	elastic "github.com/LF-Engineering/insights-datasource-shared/elastic"
@@ -150,7 +149,9 @@ func (j *DSGerrit) AddLogger(ctx *shared.Ctx) {
 
 // WriteLog - writes to log
 func (j *DSGerrit) WriteLog(ctx *shared.Ctx, timestamp time.Time, status, message string) error {
-	arn, err := aws.GetContainerARN()
+	//arn, err := aws.GetContainerARN()
+	var err error
+	arn := "arn:aws:ecs:us-east-2:395594542180:task/insights-ecs-cluster/0f12976f3fac4272989a79862eb97931"
 	if err != nil {
 		j.log.WithFields(logrus.Fields{"operation": "WriteLog"}).Errorf("getContainerMetadata Error : %+v", err)
 		return err
@@ -1579,6 +1580,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 					j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("GenerateIdentity source: %s, email: %s, name: %s, username: %s. error: %+v for doc: %+v", source, email, name, username, err, doc)
 					return
 				}
+				isBotIdentity := shared.IsBotIdentity(username)
 				contributor := insights.Contributor{
 					Role:   insights.AuthorRole,
 					Weight: 1.0,
@@ -1589,6 +1591,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 						Name:       name,
 						Username:   username,
 						Source:     source,
+						IsBot:      isBotIdentity,
 					},
 				}
 				contributors = append(contributors, contributor)
@@ -1651,6 +1654,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 							j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("GenerateIdentity source: %s, email: %s, name: %s, username: %s. error: %+v for doc: %+v", source, email, name, username, err, doc)
 							return
 						}
+						isBotIdentity := shared.IsBotIdentity(username)
 						contributor := insights.Contributor{
 							Role:   roleValue,
 							Weight: 1.0,
@@ -1661,6 +1665,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 								Name:       name,
 								Username:   username,
 								Source:     source,
+								IsBot:      isBotIdentity,
 							},
 						}
 						patchsetContributors = append(patchsetContributors, contributor)
@@ -1775,6 +1780,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 						if isApproved {
 							role = insights.ApproverRole
 						}
+						isBotIdentity := shared.IsBotIdentity(username)
 						contributor := insights.Contributor{
 							Role:   role,
 							Weight: 1.0,
@@ -1785,6 +1791,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 								Name:       name,
 								Username:   username,
 								Source:     source,
+								IsBot:      isBotIdentity,
 							},
 						}
 						approvalID, err = gerrit.GenerateGerritApprovalID(patchsetID, approvalSID)
@@ -1972,6 +1979,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 						j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("GenerateIdentity(%s,%s,%s,%s): %+v for %+v", source, email, name, username, err, doc)
 						return
 					}
+					isBotIdentity := shared.IsBotIdentity(username)
 					contributor := insights.Contributor{
 						Role:   insights.CommenterRole,
 						Weight: 1.0,
@@ -1982,6 +1990,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 							Name:       name,
 							Username:   username,
 							Source:     source,
+							IsBot:      isBotIdentity,
 						},
 					}
 					if level == "changeset" {
