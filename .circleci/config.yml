@@ -89,7 +89,7 @@ workflows:
             - build
           filters:
             branches:
-              only: update-approval-removed-schema #main
+              only: main
             tags:
               ignore: /.*/
       - approve_prod:
