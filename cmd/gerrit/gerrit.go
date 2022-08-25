@@ -1859,6 +1859,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 						if !found {
 							removeApproval.ID = oa
 							removeApproval.PatchsetID = patchsetID
+							removeApproval.SyncTimestamp = time.Now()
 							key := "approval_removed"
 							ary, ok := data[key]
 							if !ok {
