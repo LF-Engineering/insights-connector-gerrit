@@ -2727,6 +2727,7 @@ func main() {
 		gerrit.log.WithFields(logrus.Fields{"operation": "main"}).Errorf("Error: %+v", err)
 		return
 	}
+	gerrit.log = gerrit.log.WithFields(logrus.Fields{"endpoint": gerrit.URL})
 	timestamp := time.Now()
 	shared.SetSyncMode(true, false)
 	shared.SetLogLoggerError(false)
