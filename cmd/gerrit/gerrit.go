@@ -1478,7 +1478,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 					ary = append(ary, gerrit.ApprovalRemovedEvent{
 						ApprovalBaseEvent: approvalBaseEvent,
 						BaseEvent:         baseEvent,
-						Payload:           approval.(gerrit.Approval),
+						Payload:           approval.(gerrit.RemoveApproval),
 					})
 				}
 				data[k] = ary
@@ -1831,7 +1831,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 						}
 						// approval end
 					}
-					if len(approvalsAdded) > 0 || approvalsAdded != nil {
+					if len(approvalsAdded) > 0 || oldApprovals.Approvals != nil {
 						var updatedApprovals Approvals
 						for ap := range approvalsAdded {
 							updatedApprovals.Approvals = append(updatedApprovals.Approvals, ap)
@@ -1849,7 +1849,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 					}
 					for _, oa := range oldApprovals.Approvals {
 						found := false
-						approval := gerrit.Approval{}
+						removeApproval := gerrit.RemoveApproval{}
 						for apID := range approvalsAdded {
 							if apID == oa {
 								found = true
@@ -1857,13 +1857,15 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 							}
 						}
 						if !found {
-							approval.ApprovalID = oa
+							removeApproval.ID = oa
+							removeApproval.PatchsetID = patchsetID
+							removeApproval.SyncTimestamp = time.Now()
 							key := "approval_removed"
 							ary, ok := data[key]
 							if !ok {
-								ary = []interface{}{approval}
+								ary = []interface{}{removeApproval}
 							} else {
-								ary = append(ary, approval)
+								ary = append(ary, removeApproval)
 							}
 							data[key] = ary
 						}
@@ -1893,7 +1895,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 				data[key] = ary
 			}
 		}
-		if len(patchSets) > 0 || patchSets != nil {
+		if len(patchSets) > 0 || oldPatchSets.Patches != nil {
 			var updatedPatches Patches
 			for as := range patchSets {
 				updatedPatches.Patches = append(updatedPatches.Patches, as)
@@ -2725,6 +2727,7 @@ func main() {
 		gerrit.log.WithFields(logrus.Fields{"operation": "main"}).Errorf("Error: %+v", err)
 		return
 	}
+	gerrit.log = gerrit.log.WithFields(logrus.Fields{"endpoint": gerrit.URL})
 	timestamp := time.Now()
 	shared.SetSyncMode(true, false)
 	shared.SetLogLoggerError(false)
