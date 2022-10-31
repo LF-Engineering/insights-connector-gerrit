@@ -1579,7 +1579,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 					j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("GenerateIdentity source: %s, email: %s, name: %s, username: %s. error: %+v for doc: %+v", source, email, name, username, err, doc)
 					return
 				}
-				isBotIdentity := shared.IsBotIdentity(username, email)
+				isBotIdentity := shared.IsBotIdentity(name, username, email, GerritDataSource, os.Getenv("BOT_NAME_REGEX"), os.Getenv("BOT_USERNAME_REGEX"), os.Getenv("BOT_EMAIL_REGEX"))
 				contributor := insights.Contributor{
 					Role:   insights.AuthorRole,
 					Weight: 1.0,
@@ -1653,7 +1653,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 							j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("GenerateIdentity source: %s, email: %s, name: %s, username: %s. error: %+v for doc: %+v", source, email, name, username, err, doc)
 							return
 						}
-						isBotIdentity := shared.IsBotIdentity(username, email)
+						isBotIdentity := shared.IsBotIdentity(name, username, email, GerritDataSource, os.Getenv("BOT_NAME_REGEX"), os.Getenv("BOT_USERNAME_REGEX"), os.Getenv("BOT_EMAIL_REGEX"))
 						contributor := insights.Contributor{
 							Role:   roleValue,
 							Weight: 1.0,
@@ -1779,7 +1779,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 						if isApproved {
 							role = insights.ApproverRole
 						}
-						isBotIdentity := shared.IsBotIdentity(username, email)
+						isBotIdentity := shared.IsBotIdentity(name, username, email, GerritDataSource, os.Getenv("BOT_NAME_REGEX"), os.Getenv("BOT_USERNAME_REGEX"), os.Getenv("BOT_EMAIL_REGEX"))
 						contributor := insights.Contributor{
 							Role:   role,
 							Weight: 1.0,
@@ -1980,7 +1980,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 						j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("GenerateIdentity(%s,%s,%s,%s): %+v for %+v", source, email, name, username, err, doc)
 						return
 					}
-					isBotIdentity := shared.IsBotIdentity(username, email)
+					isBotIdentity := shared.IsBotIdentity(name, username, email, GerritDataSource, os.Getenv("BOT_NAME_REGEX"), os.Getenv("BOT_USERNAME_REGEX"), os.Getenv("BOT_EMAIL_REGEX"))
 					contributor := insights.Contributor{
 						Role:   insights.CommenterRole,
 						Weight: 1.0,
