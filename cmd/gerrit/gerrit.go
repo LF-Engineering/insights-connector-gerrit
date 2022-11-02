@@ -19,7 +19,6 @@ import (
 
 	"github.com/LF-Engineering/insights-datasource-gerrit/build"
 	shared "github.com/LF-Engineering/insights-datasource-shared"
-	"github.com/LF-Engineering/insights-datasource-shared/aws"
 	"github.com/LF-Engineering/insights-datasource-shared/cache"
 	"github.com/LF-Engineering/insights-datasource-shared/cryptography"
 	elastic "github.com/LF-Engineering/insights-datasource-shared/elastic"
@@ -150,7 +149,9 @@ func (j *DSGerrit) AddLogger(ctx *shared.Ctx) {
 
 // WriteLog - writes to log
 func (j *DSGerrit) WriteLog(ctx *shared.Ctx, timestamp time.Time, status, message string) error {
-	arn, err := aws.GetContainerARN()
+	//arn, err := aws.GetContainerARN()
+	arn := "arn:aws:ecs:us-east-2:395594542180:task/insights-ecs-cluster/3b35e5a6dd654b6191d2f3aaccebafc5"
+	var err error
 	if err != nil {
 		j.log.WithFields(logrus.Fields{"operation": "WriteLog"}).Errorf("getContainerMetadata Error : %+v", err)
 		return err
@@ -1528,12 +1529,9 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 	}()
 	changesetID, repoID, userID, patchsetID, approvalID, commentID, patchID, repoURL := "", "", "", "", "", "", "", ""
 	source := GerritDataSource
-	fmt.Printf("count of docs is: %v", len(docs))
 	for i, iDoc := range docs {
 		fmt.Printf("doc id: %v", i)
-		if i == 11 {
-			fmt.Printf("doc is: %+v", iDoc)
-		}
+		fmt.Printf("doc id: %+v", iDoc)
 		fmt.Println("")
 		doc, _ := iDoc.(map[string]interface{})
 		csetRepo, _ := doc["repository"].(string)
