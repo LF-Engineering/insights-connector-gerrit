@@ -1528,7 +1528,9 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 	}()
 	changesetID, repoID, userID, patchsetID, approvalID, commentID, patchID, repoURL := "", "", "", "", "", "", "", ""
 	source := GerritDataSource
-	for _, iDoc := range docs {
+	for i, iDoc := range docs {
+		fmt.Printf("doc id: %v", i)
+		fmt.Println("")
 		doc, _ := iDoc.(map[string]interface{})
 		csetRepo, _ := doc["repository"].(string)
 		csetHash, _ := doc["githash"].(string)
@@ -2225,7 +2227,6 @@ func (j *DSGerrit) GerritEnrichItems(ctx *shared.Ctx, thrN int, items []interfac
 				err         error
 			)
 			reviewsData, err = j.GetModelData(ctx, *docs)
-			fmt.Printf("xxxx Afetr GetModelData")
 			if err == nil {
 				if j.Publisher != nil {
 					insightsStr := "insights"
