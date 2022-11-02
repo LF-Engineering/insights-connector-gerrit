@@ -2225,6 +2225,7 @@ func (j *DSGerrit) GerritEnrichItems(ctx *shared.Ctx, thrN int, items []interfac
 				err         error
 			)
 			reviewsData, err = j.GetModelData(ctx, *docs)
+			fmt.Printf("xxxx Afetr GetModelData")
 			if err == nil {
 				if j.Publisher != nil {
 					insightsStr := "insights"
