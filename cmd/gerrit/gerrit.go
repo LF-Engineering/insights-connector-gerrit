@@ -1528,8 +1528,12 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 	}()
 	changesetID, repoID, userID, patchsetID, approvalID, commentID, patchID, repoURL := "", "", "", "", "", "", "", ""
 	source := GerritDataSource
+	fmt.Printf("count of docs is: %v", len(docs))
 	for i, iDoc := range docs {
 		fmt.Printf("doc id: %v", i)
+		if i == 11 {
+			fmt.Printf("doc is: %+v", iDoc)
+		}
 		fmt.Println("")
 		doc, _ := iDoc.(map[string]interface{})
 		csetRepo, _ := doc["repository"].(string)
