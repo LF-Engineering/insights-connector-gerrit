@@ -2735,9 +2735,11 @@ func (j *DSGerrit) Sync(ctx *shared.Ctx) (err error) {
 	// NOTE: Non-generic ends here
 	gMaxUpstreamDtMtx.Lock()
 	defer gMaxUpstreamDtMtx.Unlock()
-	err = j.cacheProvider.SetLastSync(j.endpoint, gMaxUpstreamDt)
-	if err != nil {
-		j.log.WithFields(logrus.Fields{"operation": "Sync"}).Errorf("unable to set last sync date to cache.error: %v", err)
+	if !gMaxUpstreamDt.IsZero() {
+		err = j.cacheProvider.SetLastSync(j.endpoint, gMaxUpstreamDt)
+		if err != nil {
+			j.log.WithFields(logrus.Fields{"operation": "Sync"}).Errorf("unable to set last sync date to cache.error: %v", err)
+		}
 	}
 	return
 }
