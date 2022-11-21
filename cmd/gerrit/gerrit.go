@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 	"io/ioutil"
 	http1 "net/http"
 	"os"
@@ -2765,6 +2767,26 @@ func main() {
 		return
 	}
 	gerrit.AddCacheProvider()
+	if os.Getenv("SPAN") != "" {
+		tracer.Start(tracer.WithGlobalTag("connector", "gerrit"))
+		defer tracer.Stop()
+
+		sb := os.Getenv("SPAN")
+		carrier := make(tracer.TextMapCarrier)
+		err = jsoniter.Unmarshal([]byte(sb), &carrier)
+		if err != nil {
+			return
+		}
+		sctx, er := tracer.Extract(carrier)
+		if er != nil {
+			fmt.Println(er)
+		}
+		if err == nil && sctx != nil {
+			span, _ := tracer.StartSpanFromContext(context.Background(), "changeSet", tracer.ResourceName("connector"), tracer.ChildOf(sctx))
+			defer span.Finish()
+		}
+	}
+
 	err = gerrit.Sync(&ctx)
 	if err != nil {
 		gerrit.log.WithFields(logrus.Fields{"operation": "main"}).Errorf("Error: %+v", err)
