@@ -7,7 +7,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 	"io/ioutil"
 	http1 "net/http"
 	"os"
@@ -37,6 +36,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/sirupsen/logrus"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 )
 
 const (
