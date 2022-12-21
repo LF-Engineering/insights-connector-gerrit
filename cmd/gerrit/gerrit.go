@@ -2766,7 +2766,7 @@ func main() {
 		gerrit.log.WithFields(logrus.Fields{"operation": "main"}).Errorf("WriteLog Error : %+v", err)
 		return
 	}
-	gerrit.AddCacheProvider()
+	gerrit.AddCacheProvider(&ctx)
 	if os.Getenv("SPAN") != "" {
 		tracer.Start(tracer.WithGlobalTag("connector", "gerrit"))
 		defer tracer.Stop()
@@ -2815,10 +2815,10 @@ func (j *DSGerrit) createStructuredLogger(ctx *shared.Ctx) {
 }
 
 // AddCacheProvider - adds cache provider
-func (j *DSGerrit) AddCacheProvider() {
+func (j *DSGerrit) AddCacheProvider(ctx *shared.Ctx) {
 	cacheProvider := cache.NewManager(GerritDataSource, os.Getenv("STAGE"))
 	j.cacheProvider = *cacheProvider
-	j.endpoint = strings.ReplaceAll(strings.TrimPrefix(strings.TrimPrefix(j.URL, "https://"), "http://"), "/", "-")
+	j.endpoint = fmt.Sprintf("%v/%v", strings.ReplaceAll(strings.TrimPrefix(strings.TrimPrefix(j.URL, "https://"), "http://"), "/", "-"), ctx.Project)
 }
 
 // Patches ...
