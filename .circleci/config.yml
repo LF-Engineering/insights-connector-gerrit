@@ -89,7 +89,7 @@ workflows:
             - build
           filters:
             branches:
-              only: IN-2131 #main
+              only: main
             tags:
               ignore: /.*/
       - approve_prod:
