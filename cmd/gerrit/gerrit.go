@@ -2818,7 +2818,7 @@ func (j *DSGerrit) createStructuredLogger(ctx *shared.Ctx) {
 func (j *DSGerrit) AddCacheProvider(ctx *shared.Ctx) {
 	cacheProvider := cache.NewManager(GerritDataSource, os.Getenv("STAGE"))
 	j.cacheProvider = *cacheProvider
-	j.endpoint = fmt.Sprintf("%v/%v", strings.ReplaceAll(strings.TrimPrefix(strings.TrimPrefix(j.URL, "https://"), "http://"), "/", "-"), ctx.Project)
+	j.endpoint = fmt.Sprintf("%v/%v", strings.ReplaceAll(strings.TrimPrefix(strings.TrimPrefix(j.URL, "https://"), "http://"), "/", "-"), strings.ReplaceAll(ctx.Project, "/", "."))
 }
 
 // Patches ...
