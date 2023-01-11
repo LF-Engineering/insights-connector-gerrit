@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -35,6 +36,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/sirupsen/logrus"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 )
 
 const (
@@ -1579,6 +1581,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 					j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("GenerateIdentity source: %s, email: %s, name: %s, username: %s. error: %+v for doc: %+v", source, email, name, username, err, doc)
 					return
 				}
+
 				contributor := insights.Contributor{
 					Role:   insights.AuthorRole,
 					Weight: 1.0,
@@ -1651,6 +1654,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 							j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("GenerateIdentity source: %s, email: %s, name: %s, username: %s. error: %+v for doc: %+v", source, email, name, username, err, doc)
 							return
 						}
+
 						contributor := insights.Contributor{
 							Role:   roleValue,
 							Weight: 1.0,
@@ -1775,6 +1779,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 						if isApproved {
 							role = insights.ApproverRole
 						}
+
 						contributor := insights.Contributor{
 							Role:   role,
 							Weight: 1.0,
@@ -1974,6 +1979,7 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 						j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("GenerateIdentity(%s,%s,%s,%s): %+v for %+v", source, email, name, username, err, doc)
 						return
 					}
+
 					contributor := insights.Contributor{
 						Role:   insights.CommenterRole,
 						Weight: 1.0,
@@ -2727,9 +2733,11 @@ func (j *DSGerrit) Sync(ctx *shared.Ctx) (err error) {
 	// NOTE: Non-generic ends here
 	gMaxUpstreamDtMtx.Lock()
 	defer gMaxUpstreamDtMtx.Unlock()
-	err = j.cacheProvider.SetLastSync(j.endpoint, gMaxUpstreamDt)
-	if err != nil {
-		j.log.WithFields(logrus.Fields{"operation": "Sync"}).Errorf("unable to set last sync date to cache.error: %v", err)
+	if !gMaxUpstreamDt.IsZero() {
+		err = j.cacheProvider.SetLastSync(j.endpoint, gMaxUpstreamDt)
+		if err != nil {
+			j.log.WithFields(logrus.Fields{"operation": "Sync"}).Errorf("unable to set last sync date to cache.error: %v", err)
+		}
 	}
 	return
 }
@@ -2754,7 +2762,27 @@ func main() {
 		gerrit.log.WithFields(logrus.Fields{"operation": "main"}).Errorf("WriteLog Error : %+v", err)
 		return
 	}
-	gerrit.AddCacheProvider()
+	gerrit.AddCacheProvider(&ctx)
+	if os.Getenv("SPAN") != "" {
+		tracer.Start(tracer.WithGlobalTag("connector", "gerrit"))
+		defer tracer.Stop()
+
+		sb := os.Getenv("SPAN")
+		carrier := make(tracer.TextMapCarrier)
+		err = jsoniter.Unmarshal([]byte(sb), &carrier)
+		if err != nil {
+			return
+		}
+		sctx, er := tracer.Extract(carrier)
+		if er != nil {
+			fmt.Println(er)
+		}
+		if err == nil && sctx != nil {
+			span, _ := tracer.StartSpanFromContext(context.Background(), "changeSet", tracer.ResourceName("connector"), tracer.ChildOf(sctx))
+			defer span.Finish()
+		}
+	}
+
 	err = gerrit.Sync(&ctx)
 	if err != nil {
 		gerrit.log.WithFields(logrus.Fields{"operation": "main"}).Errorf("Error: %+v", err)
@@ -2783,10 +2811,10 @@ func (j *DSGerrit) createStructuredLogger(ctx *shared.Ctx) {
 }
 
 // AddCacheProvider - adds cache provider
-func (j *DSGerrit) AddCacheProvider() {
+func (j *DSGerrit) AddCacheProvider(ctx *shared.Ctx) {
 	cacheProvider := cache.NewManager(GerritDataSource, os.Getenv("STAGE"))
 	j.cacheProvider = *cacheProvider
-	j.endpoint = strings.ReplaceAll(strings.TrimPrefix(strings.TrimPrefix(j.URL, "https://"), "http://"), "/", "-")
+	j.endpoint = fmt.Sprintf("%v/%v", strings.ReplaceAll(strings.TrimPrefix(strings.TrimPrefix(j.URL, "https://"), "http://"), "/", "-"), strings.ReplaceAll(ctx.Project, "/", "."))
 }
 
 // Patches ...
