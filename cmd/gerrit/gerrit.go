@@ -1,8 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -76,8 +79,18 @@ var (
 	// GerritApprovalRoles - roles to fetch affiliation data for approval
 	GerritApprovalRoles = []string{"by"}
 	// max upstream date
-	gMaxUpstreamDt    time.Time
-	gMaxUpstreamDtMtx = &sync.Mutex{}
+	gMaxUpstreamDt             time.Time
+	gMaxUpstreamDtMtx          = &sync.Mutex{}
+	cachedChangesets           = make(map[string]EntityCache)
+	changesetsCacheFile        = "changesets-cache.csv"
+	cachedPatchSets            = make(map[string][]EntityCache)
+	patchSetCacheFile          = "patchsets-cache"
+	cachedPatchSetApprovals    = make(map[string][]EntityCache)
+	patchSetApprovalsCacheFile = "patchset-approvals-cache"
+	cachedChangesetComments    = make(map[string][]EntityCache)
+	changesetCommentsCacheFile = "changeset-comments-cache"
+	cachedPatchsetComments     = make(map[string][]EntityCache)
+	patchsetCommentsCacheFile  = "changeset-comments-cache"
 )
 
 // Publisher - for streaming data to Kinesis
@@ -1599,23 +1612,9 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 		}
 		// Changeset owner (author) ends
 		// Patchsets and approvals start
-		patchCacheID := fmt.Sprintf("%s-%s-patchsets", ChangeSet, changesetID)
-		patchSetsFileData, er := j.cacheProvider.GetFileByKey(j.endpoint, patchCacheID)
-		if er != nil {
-			err = er
-			j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("GetFileByKey for changset patchsets %s error: %v", patchCacheID, err)
-			return
-		}
-		oldPatchSets := Patches{}
-		if patchSetsFileData != nil {
-			er = json.Unmarshal(patchSetsFileData, &oldPatchSets)
-			if er != nil {
-				err = er
-				j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("unmarshall old cached pullrequest assaignees error: %v", err)
-				return
-			}
-		}
+		oldPatchSets := cachedPatchSets[changesetID]
 		patchSets := map[string]gerrit.Patchset{}
+		updatedPatchsets := make([]EntityCache, 0)
 		objAry, okObj := doc["patchset_array"].([]interface{})
 		if okObj {
 			for _, iObj := range objAry {
@@ -1682,8 +1681,8 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 						return
 					}
 					patchSetExists := false
-					for _, pID := range oldPatchSets.Patches {
-						if pID == patchsetID {
+					for _, pID := range oldPatchSets {
+						if pID.EntityID == patchsetID {
 							patchSetExists = true
 							break
 						}
@@ -1700,6 +1699,11 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 						Body: csetSummary,
 					}
 					patchSets[patchsetID] = patchset
+					updatedPatchsets = append(updatedPatchsets, EntityCache{
+						Timestamp:      fmt.Sprintf("%v", patchsetCreatedOn.Unix()),
+						EntityID:       patchsetID,
+						SourceEntityID: patchsetSID,
+					})
 					if !patchSetExists {
 						key := "patchset_added"
 						ary, ok := data[key]
@@ -1743,23 +1747,8 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 						j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("GenerateGerritPatchsetID changeset id: %s patchset id: %s.error: %+v for doc: %+v", changesetID, patchsetSID, err, doc)
 						return
 					}
-					approvalsCacheID := fmt.Sprintf("%s-%s-approvals", PatchSet, patchsetID)
-					approvalsFileData, er := j.cacheProvider.GetFileByKey(j.endpoint, approvalsCacheID)
-					if er != nil {
-						err = er
-						j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("GetFileByKey for patchset approvals %s error: %v", approvalsCacheID, err)
-						return
-					}
-					oldApprovals := Approvals{}
-					if approvalsFileData != nil {
-						er = json.Unmarshal(approvalsFileData, &oldApprovals)
-						if er != nil {
-							err = er
-							j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("unmarshall old cached approvals error: %v", err)
-							return
-						}
-					}
-					approvalsAdded := map[string]gerrit.Approval{}
+					oldApprovals := cachedPatchSetApprovals[patchsetID]
+					approvalsAdded := make([]EntityCache, 0)
 					for _, role := range roles {
 						roleType, _ := role["role"].(string)
 						if roleType != "by" {
@@ -1801,8 +1790,8 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 						// If we want to add approver as a contributor on the changeset object
 						// contributors = append(contributors, contributor)
 						approvalFound := false
-						for _, ap := range oldApprovals.Approvals {
-							if ap == approvalID {
+						for _, ap := range oldApprovals {
+							if ap.EntityID == approvalID {
 								approvalFound = true
 								break
 							}
@@ -1817,7 +1806,11 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 							SyncTimestamp:   time.Now(),
 							SourceTimestamp: reviewCreatedOn,
 						}
-						approvalsAdded[approvalID] = approval
+						approvalsAdded = append(approvalsAdded, EntityCache{
+							Timestamp:      fmt.Sprintf("%v", reviewCreatedOn.Unix()),
+							EntityID:       approvalID,
+							SourceEntityID: approvalSID,
+						})
 						if !approvalFound {
 							key := "approval_added"
 							ary, ok := data[key]
@@ -1830,33 +1823,18 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 						}
 						// approval end
 					}
-					if len(approvalsAdded) > 0 || oldApprovals.Approvals != nil {
-						var updatedApprovals Approvals
-						for ap := range approvalsAdded {
-							updatedApprovals.Approvals = append(updatedApprovals.Approvals, ap)
-						}
-						b, er := json.Marshal(updatedApprovals)
-						if er != nil {
-							err = er
-							j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("error marshal updated approvals cache. approvals data: %+v, error: %v", updatedApprovals, err)
-							return
-						}
-						if err = j.cacheProvider.UpdateFileByKey(j.endpoint, approvalsCacheID, b); err != nil {
-							j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("UpdateFileByKey error updated approvals cache. path: %s, cache id: %s, approvals data: %v, error: %v", j.endpoint, approvalsCacheID, b, err)
-							return
-						}
-					}
-					for _, oa := range oldApprovals.Approvals {
+					cachedPatchSetApprovals[patchsetID] = approvalsAdded
+					for _, oa := range oldApprovals {
 						found := false
 						removeApproval := gerrit.RemoveApproval{}
-						for apID := range approvalsAdded {
-							if apID == oa {
+						for _, apID := range approvalsAdded {
+							if apID.EntityID == oa.EntityID {
 								found = true
 								break
 							}
 						}
 						if !found {
-							removeApproval.ID = oa
+							removeApproval.ID = oa.EntityID
 							removeApproval.PatchsetID = patchsetID
 							removeApproval.SyncTimestamp = time.Now()
 							key := "approval_removed"
@@ -1873,11 +1851,11 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 				}
 			}
 		}
-		for _, op := range oldPatchSets.Patches {
+		for _, op := range oldPatchSets {
 			found := false
 			removedPatch := gerrit.Patchset{}
 			for k, p := range patchSets {
-				if k == op {
+				if k == op.EntityID {
 					found = true
 					removedPatch = p
 					break
@@ -1894,58 +1872,12 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 				data[key] = ary
 			}
 		}
-		if len(patchSets) > 0 || oldPatchSets.Patches != nil {
-			var updatedPatches Patches
-			for as := range patchSets {
-				updatedPatches.Patches = append(updatedPatches.Patches, as)
-			}
-			b, er := json.Marshal(updatedPatches)
-			if er != nil {
-				err = er
-				j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("error marshal updated patchsets cache. patchsets data: %+v, error: %v", updatedPatches, err)
-				return
-			}
-			if err = j.cacheProvider.UpdateFileByKey(j.endpoint, patchCacheID, b); err != nil {
-				j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("UpdateFileByKey error updated patchsets cache. path: %s, cache id: %s, patch data: %v, error: %v", j.endpoint, patchCacheID, b, err)
-				return
-			}
-		}
+		cachedPatchSets[changesetID] = updatedPatchsets
 
 		// patchsets and approvals end
 		// comments start
-		changesetCommentsCacheID := fmt.Sprintf("%s-%s-comments", ChangeSet, changesetID)
-		changesetCommentsFileData, er := j.cacheProvider.GetFileByKey(j.endpoint, changesetCommentsCacheID)
-		if er != nil {
-			err = er
-			j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("GetFileByKey fetch changeset comments data error: %v", err)
-			return
-		}
-		oldChangesetComments := ReviewComments{}
-		if changesetCommentsFileData != nil {
-			er = json.Unmarshal(changesetCommentsFileData, &oldChangesetComments)
-			if er != nil {
-				err = er
-				j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("unmarshall old changeset comments error: %v", err)
-				return
-			}
-		}
-
-		patchsetCommentsCacheID := fmt.Sprintf("%s-%s-comments", PatchSet, patchsetID)
-		patchesetCommentsFileData, er := j.cacheProvider.GetFileByKey(j.endpoint, patchsetCommentsCacheID)
-		if er != nil {
-			err = er
-			j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("GetFileByKey fetch patchset comments data error: %v", err)
-			return
-		}
-		oldpatchsetComments := ReviewComments{}
-		if patchesetCommentsFileData != nil {
-			er = json.Unmarshal(patchesetCommentsFileData, &oldpatchsetComments)
-			if er != nil {
-				err = er
-				j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("unmarshall old patchset comments error: %v", err)
-				return
-			}
-		}
+		oldChangesetComments := cachedChangesetComments[changesetID]
+		oldPatchsetComments := cachedPatchsetComments[patchsetID]
 		commentsAry, okComments := doc["comments_array"].([]interface{})
 		if okComments {
 			for _, iComment := range commentsAry {
@@ -2017,17 +1949,23 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 						}
 						found := false
 						edited := false
-						for i, oc := range oldChangesetComments.Comments {
-							if commentID == oc.ID {
-								if oc.Body != sCommentBody {
+						for i, oc := range oldChangesetComments {
+							if commentID == oc.EntityID {
+								if oc.Hash != sCommentBody {
 									edited = true
-									oldChangesetComments.Comments[i].Body = sCommentBody
+									oldChangesetComments[i].Hash = sCommentBody
 									break
 								}
 								found = true
 							}
 						}
 						if !found {
+							oldChangesetComments = append(oldChangesetComments, EntityCache{
+								Timestamp:      fmt.Sprintf("%v", comment.SourceTimestamp.Unix()),
+								EntityID:       comment.ID,
+								SourceEntityID: comment.CommentID,
+								Hash:           comment.Body,
+							})
 							key := "changeset_comment_added"
 							ary, ok := data[key]
 							if !ok {
@@ -2080,17 +2018,23 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 						}
 						found := false
 						edited := false
-						for i, op := range oldpatchsetComments.Comments {
-							if commentID == op.ID {
-								if op.Body != sCommentBody {
+						for i, op := range oldPatchsetComments {
+							if commentID == op.EntityID {
+								if op.Hash != sCommentBody {
 									edited = true
-									oldpatchsetComments.Comments[i].Body = sCommentBody
+									oldPatchsetComments[i].Hash = sCommentBody
 									break
 								}
 								found = true
 							}
 						}
 						if !found {
+							oldPatchsetComments = append(oldPatchsetComments, EntityCache{
+								Timestamp:      fmt.Sprintf("%v", comment.SourceTimestamp.Unix()),
+								EntityID:       comment.ID,
+								SourceEntityID: comment.CommentID,
+								Hash:           comment.Body,
+							})
 							key := "patchset_comment_added"
 							ary, ok := data[key]
 							if !ok {
@@ -2114,27 +2058,8 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 				}
 			}
 		}
-		b, er := json.Marshal(oldChangesetComments)
-		if er != nil {
-			err = er
-			j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("error marshal updated changeset comments cache. comments data: %+v, error: %v", oldChangesetComments, err)
-			return
-		}
-		if err = j.cacheProvider.UpdateFileByKey(j.endpoint, changesetCommentsCacheID, b); err != nil {
-			j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("UpdateFileByKey error update changeset comments cache. path: %s, cache id: %s, comments data: %v, error: %v", j.endpoint, changesetCommentsCacheID, b, err)
-			return
-		}
-
-		b, er = json.Marshal(oldpatchsetComments)
-		if er != nil {
-			err = er
-			j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("error marshal updated patcheset comments cache. comments data: %+v, error: %v", oldpatchsetComments, err)
-			return
-		}
-		if err = j.cacheProvider.UpdateFileByKey(j.endpoint, patchsetCommentsCacheID, b); err != nil {
-			j.log.WithFields(logrus.Fields{"operation": "GetModelData"}).Errorf("UpdateFileByKey error update patchset comments cache. path: %s, cache id: %s, comments data: %v, error: %v", j.endpoint, patchsetCommentsCacheID, b, err)
-			return
-		}
+		cachedChangesetComments[changesetID] = oldChangesetComments
+		cachedPatchsetComments[patchsetID] = oldPatchsetComments
 		// comments end
 		// shared.Printf("(repo,repourl,cseturl,summary,siid,closed,merged)=('%s','%s','%s','%s','%s',(%v,%v),(%v,%v))\n", csetRepo, repoURL, csetURL, csetSummary, sIID, isClosed, closedOn, isMerged, mergedOn)
 		// Final changeset object
@@ -2154,13 +2079,8 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 				Orphaned:         false,
 			},
 		}
-		cacheID := fmt.Sprintf("%s-%s", ChangeSet, changesetID)
-		isCreated, er := j.cacheProvider.IsKeyCreated(j.endpoint, cacheID)
-		if er != nil {
-			err = er
-			j.log.WithFields(logrus.Fields{"operation": "GetModelDataIssue"}).Errorf("error getting cache for endpoint %s %s. error: %+v", j.endpoint, ChangeSet, err)
-			return
-		}
+
+		isCreated := isKeyCreated(changesetID)
 		if !isCreated {
 			key := "changeset_created"
 			ary, ok := data[key]
@@ -2228,7 +2148,6 @@ func (j *DSGerrit) GerritEnrichItems(ctx *shared.Ctx, thrN int, items []interfac
 					insightsStr := "insights"
 					reviewsStr := "reviews"
 					envStr := os.Getenv("STAGE")
-					data := make([]map[string]interface{}, 0)
 					for k, v := range reviewsData {
 						switch k {
 						case "changeset_created":
@@ -2236,20 +2155,21 @@ func (j *DSGerrit) GerritEnrichItems(ctx *shared.Ctx, thrN int, items []interfac
 							ev, _ := v[0].(gerrit.ChangesetCreatedEvent)
 							path, err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
 							for _, d := range v {
-								changeID := d.(gerrit.ChangesetCreatedEvent).Payload.ID
-								cacheID := fmt.Sprintf("%s-%s", ChangeSet, changeID)
+								changS := d.(gerrit.ChangesetCreatedEvent).Payload
 								b, err := json.Marshal(d)
 								if err != nil {
-									j.log.WithFields(logrus.Fields{"operation": "GerritEnrichItems"}).Errorf("error marshall data for changeset %s, error %v", changeID, err)
+									j.log.WithFields(logrus.Fields{"operation": "GerritEnrichItems"}).Errorf("error marshall data for changeset %s, error %v", changS.ID, err)
 									continue
 								}
-								data = append(data, map[string]interface{}{
-									"id": cacheID,
-									"data": map[string]interface{}{
-										"content": b,
-										"path":    path,
-									},
-								})
+								tStamp := d.(gerrit.ChangesetCreatedEvent).Payload.SyncTimestamp.Unix()
+								contentHash := fmt.Sprintf("%x", sha256.Sum256(b))
+								cachedChangesets[changS.ID] = EntityCache{
+									Timestamp:      fmt.Sprintf("%v", tStamp),
+									EntityID:       changS.ID,
+									SourceEntityID: changS.ChangeRequest.ChangeRequestID,
+									Hash:           contentHash,
+									FileLocation:   path,
+								}
 							}
 						case "changeset_merged":
 							ev, _ := v[0].(gerrit.ChangesetMergedEvent)
@@ -2288,12 +2208,41 @@ func (j *DSGerrit) GerritEnrichItems(ctx *shared.Ctx, thrN int, items []interfac
 							break
 						}
 					}
-					if len(data) > 0 {
-						err = j.cacheProvider.Create(j.endpoint, data)
-						if err != nil {
-							j.log.WithFields(logrus.Fields{"operation": "GerritEnrichItems"}).Errorf("Error creating cache: %+v", err)
-							return
-						}
+					if err = j.createCacheFile([]EntityCache{}, ""); err != nil {
+						j.log.WithFields(logrus.Fields{"operation": "GerritEnrichItems"}).Errorf("Error creating cache: %+v", err)
+						return
+					}
+
+					patchB, err := jsoniter.Marshal(cachedPatchSets)
+					if err != nil {
+						return
+					}
+					if err = j.cacheProvider.UpdateFileByKey(j.endpoint, patchSetCacheFile, patchB); err != nil {
+						return
+					}
+
+					approvalsB, err := jsoniter.Marshal(cachedPatchSetApprovals)
+					if err != nil {
+						return
+					}
+					if err = j.cacheProvider.UpdateFileByKey(j.endpoint, patchSetApprovalsCacheFile, approvalsB); err != nil {
+						return
+					}
+
+					patchCommentsB, err := jsoniter.Marshal(cachedPatchsetComments)
+					if err != nil {
+						return
+					}
+					if err = j.cacheProvider.UpdateFileByKey(j.endpoint, patchsetCommentsCacheFile, patchCommentsB); err != nil {
+						return
+					}
+
+					changeCommentsB, err := jsoniter.Marshal(cachedChangesetComments)
+					if err != nil {
+						return
+					}
+					if err = j.cacheProvider.UpdateFileByKey(j.endpoint, changesetCommentsCacheFile, changeCommentsB); err != nil {
+						return
 					}
 				} else {
 					jsonBytes, err = jsoniter.Marshal(reviewsData)
@@ -2551,6 +2500,27 @@ func (j *DSGerrit) Sync(ctx *shared.Ctx) (err error) {
 		if err != nil {
 			return
 		}
+	}
+	j.getChangesetCache()
+	err = j.getPatchSets()
+	if err != nil {
+		j.log.WithFields(logrus.Fields{"operation": "Sync"}).Errorf("error getting cached patchests %v", err)
+		return
+	}
+	err = j.getPatchSetsApproval()
+	if err != nil {
+		j.log.WithFields(logrus.Fields{"operation": "Sync"}).Errorf("error getting cached patchests approvals %v", err)
+		return
+	}
+	err = j.getPatchSetsComments()
+	if err != nil {
+		j.log.WithFields(logrus.Fields{"operation": "Sync"}).Errorf("error getting cached patchests comments %v", err)
+		return
+	}
+	err = j.getChangesetsComments()
+	if err != nil {
+		j.log.WithFields(logrus.Fields{"operation": "Sync"}).Errorf("error getting cached changeset comments %v", err)
+		return
 	}
 	var (
 		startFrom   int
@@ -2836,4 +2806,162 @@ type ReviewComments struct {
 type Comment struct {
 	ID   string `json:"id"`
 	Body string `json:"body"`
+}
+
+func (j *DSGerrit) getChangesetCache() {
+	comB, err := j.cacheProvider.GetFileByKey(j.endpoint, changesetsCacheFile)
+	if err != nil {
+		return
+	}
+	reader := csv.NewReader(bytes.NewBuffer(comB))
+	records, err := reader.ReadAll()
+	if err != nil {
+		return
+	}
+	for i, record := range records {
+		if i == 0 {
+			continue
+		}
+		orphaned, err := strconv.ParseBool(record[5])
+		if err != nil {
+			orphaned = false
+		}
+
+		cachedChangesets[record[1]] = EntityCache{
+			Timestamp:      record[0],
+			EntityID:       record[1],
+			SourceEntityID: record[2],
+			FileLocation:   record[3],
+			Hash:           record[4],
+			Orphaned:       orphaned,
+		}
+	}
+}
+
+func (j *DSGerrit) getPatchSets() error {
+	patchsetsB, err := j.cacheProvider.GetFileByKey(j.endpoint, patchSetCacheFile)
+	if err != nil {
+		return err
+	}
+	records := make(map[string][]EntityCache)
+	if patchsetsB != nil {
+		if err = json.Unmarshal(patchsetsB, &records); err != nil {
+			return err
+		}
+	}
+	for key, val := range records {
+		cachedPatchSets[key] = val
+	}
+	return nil
+}
+
+func (j *DSGerrit) getPatchSetsApproval() error {
+	patchsetsApprovalB, err := j.cacheProvider.GetFileByKey(j.endpoint, patchSetApprovalsCacheFile)
+	if err != nil {
+		return err
+	}
+	records := make(map[string][]EntityCache)
+	if patchsetsApprovalB != nil {
+		if err = json.Unmarshal(patchsetsApprovalB, &records); err != nil {
+			return err
+		}
+	}
+	for key, val := range records {
+		cachedPatchSetApprovals[key] = val
+	}
+	return nil
+}
+
+func (j *DSGerrit) getPatchSetsComments() error {
+	patchsetsCommentsB, err := j.cacheProvider.GetFileByKey(j.endpoint, patchsetCommentsCacheFile)
+	if err != nil {
+		return err
+	}
+	records := make(map[string][]EntityCache)
+	if patchsetsCommentsB != nil {
+		if err = json.Unmarshal(patchsetsCommentsB, &records); err != nil {
+			return err
+		}
+	}
+	for key, val := range records {
+		cachedPatchsetComments[key] = val
+	}
+	return nil
+}
+
+func (j *DSGerrit) getChangesetsComments() error {
+	changesetsCommentsB, err := j.cacheProvider.GetFileByKey(j.endpoint, changesetCommentsCacheFile)
+	if err != nil {
+		return err
+	}
+	records := make(map[string][]EntityCache)
+	if changesetsCommentsB != nil {
+		if err = json.Unmarshal(changesetsCommentsB, &records); err != nil {
+			return err
+		}
+	}
+	for key, val := range records {
+		cachedChangesetComments[key] = val
+	}
+	return nil
+}
+
+func (j *DSGerrit) createCacheFile(cache []EntityCache, path string) error {
+	for _, comm := range cache {
+		comm.FileLocation = path
+		cachedChangesets[comm.EntityID] = comm
+	}
+	records := [][]string{
+		{"timestamp", "entity_id", "source_entity_id", "file_location", "hash", "orphaned"},
+	}
+	for _, c := range cachedChangesets {
+		records = append(records, []string{c.Timestamp, c.EntityID, c.SourceEntityID, c.FileLocation, c.Hash, strconv.FormatBool(c.Orphaned)})
+	}
+
+	csvFile, err := os.Create(changesetsCacheFile)
+	if err != nil {
+		return err
+	}
+
+	w := csv.NewWriter(csvFile)
+	err = w.WriteAll(records)
+	if err != nil {
+		return err
+	}
+	err = csvFile.Close()
+	if err != nil {
+		return err
+	}
+	file, err := os.ReadFile(changesetsCacheFile)
+	if err != nil {
+		return err
+	}
+	err = os.Remove(changesetsCacheFile)
+	if err != nil {
+		return err
+	}
+	err = j.cacheProvider.UpdateFileByKey(j.endpoint, changesetsCacheFile, file)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func isKeyCreated(id string) bool {
+	_, ok := cachedChangesets[id]
+	if ok {
+		return true
+	}
+	return false
+}
+
+// EntityCache single commit cache schema
+type EntityCache struct {
+	Timestamp      string `json:"timestamp"`
+	EntityID       string `json:"entity_id"`
+	SourceEntityID string `json:"source_entity_id"`
+	FileLocation   string `json:"file_location"`
+	Hash           string `json:"hash"`
+	Orphaned       bool   `json:"orphaned"`
 }
