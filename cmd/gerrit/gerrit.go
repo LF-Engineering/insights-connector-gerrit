@@ -2787,27 +2787,6 @@ func (j *DSGerrit) AddCacheProvider(ctx *shared.Ctx) {
 	j.endpoint = fmt.Sprintf("%v/%v", strings.ReplaceAll(strings.TrimPrefix(strings.TrimPrefix(j.URL, "https://"), "http://"), "/", "-"), strings.ReplaceAll(ctx.Project, "/", "."))
 }
 
-// Patches ...
-type Patches struct {
-	Patches []string
-}
-
-// Approvals ...
-type Approvals struct {
-	Approvals []string
-}
-
-// ReviewComments ...
-type ReviewComments struct {
-	Comments []Comment
-}
-
-// Comment ...
-type Comment struct {
-	ID   string `json:"id"`
-	Body string `json:"body"`
-}
-
 func (j *DSGerrit) getChangesetCache() {
 	comB, err := j.cacheProvider.GetFileByKey(j.endpoint, changesetsCacheFile)
 	if err != nil {
