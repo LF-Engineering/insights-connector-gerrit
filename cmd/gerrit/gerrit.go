@@ -95,7 +95,7 @@ var (
 
 // Publisher - for streaming data to Kinesis
 type Publisher interface {
-	PushEvents(action, source, eventType, subEventType, env string, data []interface{}) (string, error)
+	PushEvents(action, source, eventType, subEventType, env string, data []interface{}, endpoint string) (string, error)
 }
 
 // DSGerrit - DS implementation for stub - does nothing at all, just presents a skeleton code
@@ -2143,6 +2143,7 @@ func (j *DSGerrit) GerritEnrichItems(ctx *shared.Ctx, thrN int, items []interfac
 				err         error
 			)
 			reviewsData, err = j.GetModelData(ctx, *docs)
+			endpoint := strings.ReplaceAll(j.endpoint, "/", "-")
 			if err == nil {
 				if j.Publisher != nil {
 					insightsStr := "insights"
@@ -2153,7 +2154,7 @@ func (j *DSGerrit) GerritEnrichItems(ctx *shared.Ctx, thrN int, items []interfac
 						case "changeset_created":
 							path := ""
 							ev, _ := v[0].(gerrit.ChangesetCreatedEvent)
-							path, err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
+							path, err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v, endpoint)
 							for _, d := range v {
 								changS := d.(gerrit.ChangesetCreatedEvent).Payload
 								b, err := json.Marshal(d)
@@ -2173,34 +2174,34 @@ func (j *DSGerrit) GerritEnrichItems(ctx *shared.Ctx, thrN int, items []interfac
 							}
 						case "changeset_merged":
 							ev, _ := v[0].(gerrit.ChangesetMergedEvent)
-							_, err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
+							_, err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v, endpoint)
 						case "changeset_closed":
 							ev, _ := v[0].(gerrit.ChangesetClosedEvent)
-							_, err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
+							_, err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v, endpoint)
 						case "changeset_comment_added":
 							ev, _ := v[0].(gerrit.ChangesetCommentAddedEvent)
-							_, err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
+							_, err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v, endpoint)
 						case "changeset_comment_edited":
 							ev, _ := v[0].(gerrit.ChangesetCommentEditedEvent)
-							_, err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
+							_, err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v, endpoint)
 						case "patchset_comment_added":
 							ev, _ := v[0].(gerrit.PatchsetCommentAddedEvent)
-							_, err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
+							_, err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v, endpoint)
 						case "patchset_comment_edited":
 							ev, _ := v[0].(gerrit.PatchsetCommentEditedEvent)
-							_, err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
+							_, err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v, endpoint)
 						case "approval_added":
 							ev, _ := v[0].(gerrit.ApprovalAddedEvent)
-							_, err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
+							_, err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v, endpoint)
 						case "approval_removed":
 							ev, _ := v[0].(gerrit.ApprovalRemovedEvent)
-							_, err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
+							_, err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v, endpoint)
 						case "patchset_added":
 							ev, _ := v[0].(gerrit.PatchsetAddedEvent)
-							_, err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
+							_, err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v, endpoint)
 						case "patchset_removed":
 							ev, _ := v[0].(gerrit.PatchsetRemovedEvent)
-							_, err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v)
+							_, err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v, endpoint)
 						default:
 							err = fmt.Errorf("unknown event type '%s'", k)
 						}
