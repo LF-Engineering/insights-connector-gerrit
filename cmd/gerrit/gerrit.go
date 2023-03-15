@@ -591,12 +591,6 @@ func (j *DSGerrit) GetGerritReviews(ctx *shared.Ctx, after, before string, after
 
 func (j *DSGerrit) GetGerritLatestReviews(ctx *shared.Ctx) (string, error) {
 	cmdLine := j.GerritCmd
-	// https://gerrit-review.googlesource.com/Documentation/user-search.html:
-	// https://gerrit-review.googlesource.com/Documentation/cmd-query.html
-	// ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ./ssh-key.secret -p XYZ usr@gerrit-url gerrit query after:'1970-01-01 00:00:00' limit: 2 (status:open OR status:closed) --all-approvals --all-reviewers --comments --format=JSON
-	// For unknown reasons , gerrit is not returning data if number of seconds is not equal to 00 - so I'm updating query string to set seconds to ":00"
-	/*	after = after[:len(after)-3] + ":00"
-		before = before[:len(before)-3] + ":00"*/
 	cmdLine = append(cmdLine, "query")
 	if ctx.ProjectFilter && ctx.Project != "" {
 		cmdLine = append(cmdLine, "project:", ctx.Project)
@@ -632,12 +626,6 @@ func (j *DSGerrit) GetGerritLatestReviews(ctx *shared.Ctx) (string, error) {
 
 func (j *DSGerrit) GetGerritReviewsCount(ctx *shared.Ctx, startFrom int) (int, error) {
 	cmdLine := j.GerritCmd
-	// https://gerrit-review.googlesource.com/Documentation/user-search.html:
-	// https://gerrit-review.googlesource.com/Documentation/cmd-query.html
-	// ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ./ssh-key.secret -p XYZ usr@gerrit-url gerrit query after:'1970-01-01 00:00:00' limit: 2 (status:open OR status:closed) --all-approvals --all-reviewers --comments --format=JSON
-	// For unknown reasons , gerrit is not returning data if number of seconds is not equal to 00 - so I'm updating query string to set seconds to ":00"
-	/*	after = after[:len(after)-3] + ":00"
-		before = before[:len(before)-3] + ":00"*/
 	cmdLine = append(cmdLine, "query")
 	if ctx.ProjectFilter && ctx.Project != "" {
 		cmdLine = append(cmdLine, "project:", ctx.Project)
