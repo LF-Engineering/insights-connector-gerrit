@@ -91,6 +91,7 @@ var (
 	changesetCommentsCacheFile = "changeset-comments-cache"
 	cachedPatchsetComments     = make(map[string][]EntityCache)
 	patchsetCommentsCacheFile  = "changeset-comments-cache"
+	createdChangesets          = make(map[string]bool)
 )
 
 // Publisher - for streaming data to Kinesis
@@ -586,6 +587,88 @@ func (j *DSGerrit) GetGerritReviews(ctx *shared.Ctx, after, before string, after
 		reviews = append(reviews, item)
 	}
 	return
+}
+
+func (j *DSGerrit) GetGerritLatestReviews(ctx *shared.Ctx) (string, error) {
+	cmdLine := j.GerritCmd
+	// https://gerrit-review.googlesource.com/Documentation/user-search.html:
+	// https://gerrit-review.googlesource.com/Documentation/cmd-query.html
+	// ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ./ssh-key.secret -p XYZ usr@gerrit-url gerrit query after:'1970-01-01 00:00:00' limit: 2 (status:open OR status:closed) --all-approvals --all-reviewers --comments --format=JSON
+	// For unknown reasons , gerrit is not returning data if number of seconds is not equal to 00 - so I'm updating query string to set seconds to ":00"
+	/*	after = after[:len(after)-3] + ":00"
+		before = before[:len(before)-3] + ":00"*/
+	cmdLine = append(cmdLine, "query")
+	if ctx.ProjectFilter && ctx.Project != "" {
+		cmdLine = append(cmdLine, "project:", ctx.Project)
+	}
+
+	cmdLine = append(
+		cmdLine,
+		"limit:", strconv.Itoa(1),
+		"(status:open OR status:closed)",
+		"--format=JSON",
+	)
+
+	if ctx.Debug > 0 {
+		j.log.WithFields(logrus.Fields{"operation": "GetGerritReviews"}).Debugf("getting reviews via: %v", cmdLine)
+	}
+	sout, serr, err := shared.ExecCommand(ctx, cmdLine, "", nil)
+	if err != nil {
+		j.log.WithFields(logrus.Fields{"operation": "GetGerritReviews"}).Errorf("error executing command: %v, error: %v, output:%s, output erro: %s", cmdLine, err, sout, serr)
+		return "", err
+	}
+	data := strings.Replace("["+strings.Replace(sout, "\n", ",", -1)+"]", ",]", "]", -1)
+	var changSets []Changeset
+	err = jsoniter.Unmarshal([]byte(data), &changSets)
+	if err != nil {
+		return "", err
+	}
+	changeID := ""
+	if len(changSets) > 0 {
+		changeID = changSets[0].ID
+	}
+	return changeID, nil
+}
+
+func (j *DSGerrit) GetGerritReviewsCount(ctx *shared.Ctx, startFrom int) (int, error) {
+	cmdLine := j.GerritCmd
+	// https://gerrit-review.googlesource.com/Documentation/user-search.html:
+	// https://gerrit-review.googlesource.com/Documentation/cmd-query.html
+	// ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ./ssh-key.secret -p XYZ usr@gerrit-url gerrit query after:'1970-01-01 00:00:00' limit: 2 (status:open OR status:closed) --all-approvals --all-reviewers --comments --format=JSON
+	// For unknown reasons , gerrit is not returning data if number of seconds is not equal to 00 - so I'm updating query string to set seconds to ":00"
+	/*	after = after[:len(after)-3] + ":00"
+		before = before[:len(before)-3] + ":00"*/
+	cmdLine = append(cmdLine, "query")
+	if ctx.ProjectFilter && ctx.Project != "" {
+		cmdLine = append(cmdLine, "project:", ctx.Project)
+	}
+
+	cmdLine = append(
+		cmdLine,
+		"(status:open OR status:closed)",
+		"--format=JSON",
+	)
+
+	cmdLine = append(cmdLine, "--start="+strconv.Itoa(startFrom))
+	if ctx.Debug > 0 {
+		j.log.WithFields(logrus.Fields{"operation": "GetGerritReviews"}).Debugf("getting reviews via: %v", cmdLine)
+	}
+	sout, serr, err := shared.ExecCommand(ctx, cmdLine, "", nil)
+	if err != nil {
+		j.log.WithFields(logrus.Fields{"operation": "GetGerritReviews"}).Errorf("error executing command: %v, error: %v, output:%s, output erro: %s", cmdLine, err, sout, serr)
+		return 0, err
+	}
+	data := strings.Replace("["+strings.Replace(sout, "\n", ",", -1)+"]", ",]", "]", -1)
+	var changSets []Changeset
+	err = jsoniter.Unmarshal([]byte(data), &changSets)
+	if err != nil {
+		return 0, err
+	}
+	count := 0
+	if len(changSets) > 0 {
+		count = changSets[len(changSets)-1].RowCount
+	}
+	return count, nil
 }
 
 // IdentityForObject - construct identity from a given object
@@ -2079,9 +2162,13 @@ func (j *DSGerrit) GetModelData(ctx *shared.Ctx, docs []interface{}) (data map[s
 				Orphaned:         false,
 			},
 		}
-
-		isCreated := isKeyCreated(changesetID)
-		if !isCreated {
+		contentHash, er := createHash(changeset)
+		if er != nil {
+			j.log.WithFields(logrus.Fields{"operation": "GitEnrichItems"}).Errorf("error hash data for changeset %s, error %v", changeset.ChangeRequestID, err)
+			continue
+		}
+		hashExist := isHashCreated(contentHash)
+		if !hashExist {
 			key := "changeset_created"
 			ary, ok := data[key]
 			if !ok {
@@ -2155,29 +2242,45 @@ func (j *DSGerrit) GerritEnrichItems(ctx *shared.Ctx, thrN int, items []interfac
 							path := ""
 							ev, _ := v[0].(gerrit.ChangesetCreatedEvent)
 							path, err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v, endpoint)
-							for _, d := range v {
-								changS := d.(gerrit.ChangesetCreatedEvent).Payload
-								b, err := json.Marshal(d)
-								if err != nil {
-									j.log.WithFields(logrus.Fields{"operation": "GerritEnrichItems"}).Errorf("error marshall data for changeset %s, error %v", changS.ID, err)
-									continue
-								}
-								tStamp := d.(gerrit.ChangesetCreatedEvent).Payload.SyncTimestamp.Unix()
-								contentHash := fmt.Sprintf("%x", sha256.Sum256(b))
-								cachedChangesets[changS.ID] = EntityCache{
-									Timestamp:      fmt.Sprintf("%v", tStamp),
-									EntityID:       changS.ID,
-									SourceEntityID: changS.ChangeRequest.ChangeRequestID,
-									Hash:           contentHash,
-									FileLocation:   path,
+							if err == nil {
+								for _, d := range v {
+									changS := d.(gerrit.ChangesetCreatedEvent).Payload
+									contentHash, err := createHash(changS)
+									if err != nil {
+										j.log.WithFields(logrus.Fields{"operation": "GerritEnrichItems"}).Errorf("error marshall data for changeset %s, error %v", changS.ID, err)
+										continue
+									}
+									addChangesetToCache(changS, contentHash, path)
 								}
 							}
 						case "changeset_merged":
 							ev, _ := v[0].(gerrit.ChangesetMergedEvent)
-							_, err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v, endpoint)
+							path, err := j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v, endpoint)
+							if err == nil {
+								for _, d := range v {
+									changS := d.(gerrit.ChangesetMergedEvent).Payload
+									contentHash, err := createHash(changS)
+									if err != nil {
+										j.log.WithFields(logrus.Fields{"operation": "GerritEnrichItems"}).Errorf("error marshall data for changeset %s, error %v", changS.ID, err)
+										continue
+									}
+									addChangesetToCache(changS, contentHash, path)
+								}
+							}
 						case "changeset_closed":
 							ev, _ := v[0].(gerrit.ChangesetClosedEvent)
-							_, err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v, endpoint)
+							path, err := j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v, endpoint)
+							if err == nil {
+								for _, d := range v {
+									changS := d.(gerrit.ChangesetClosedEvent).Payload
+									contentHash, err := createHash(changS)
+									if err != nil {
+										j.log.WithFields(logrus.Fields{"operation": "GerritEnrichItems"}).Errorf("error marshall data for changeset %s, error %v", changS.ID, err)
+										continue
+									}
+									addChangesetToCache(changS, contentHash, path)
+								}
+							}
 						case "changeset_comment_added":
 							ev, _ := v[0].(gerrit.ChangesetCommentAddedEvent)
 							_, err = j.Publisher.PushEvents(ev.Event(), insightsStr, GerritDataSource, reviewsStr, envStr, v, endpoint)
@@ -2257,12 +2360,7 @@ func (j *DSGerrit) GerritEnrichItems(ctx *shared.Ctx, thrN int, items []interfac
 				j.log.WithFields(logrus.Fields{"operation": "GerritEnrichItems"}).Warningf("%s", string(jsonBytes))
 			}
 			*docs = []interface{}{}
-			gMaxUpstreamDtMtx.Lock()
-			defer gMaxUpstreamDtMtx.Unlock()
-			err = j.cacheProvider.SetLastSync(j.endpoint, gMaxUpstreamDt)
-			if err != nil {
-				j.log.WithFields(logrus.Fields{"operation": "GerritEnrichItems"}).Errorf("unable to set last sync date to cache.error: %v", err)
-			}
+			err = j.setLastSync(ctx)
 		}
 	}
 	if final {
@@ -2461,15 +2559,24 @@ func (j *DSGerrit) Sync(ctx *shared.Ctx) (err error) {
 		j.log.WithFields(logrus.Fields{"operation": "Sync"}).Infof("%s fetching from %v (%d threads)", j.URL, ctx.DateFrom, thrN)
 	}
 	if ctx.DateFrom == nil {
-		cachedLastSync, er := j.cacheProvider.GetLastSync(j.endpoint)
+		lastSyncDataB, er := j.cacheProvider.GetLastSyncFile(j.endpoint)
 		if er != nil {
 			err = er
 			return
 		}
-		ctx.DateFrom = &cachedLastSync
-		if ctx.DateFrom != nil {
-			j.log.WithFields(logrus.Fields{"operation": "Sync"}).Infof("%s resuming from %v (%d threads)", j.URL, ctx.DateFrom, thrN)
+		var lastSyncData lastSyncFile
+		if er = json.Unmarshal(lastSyncDataB, &lastSyncData); er != nil {
+			var cachedLastSync time.Time
+			err = json.Unmarshal(lastSyncDataB, &cachedLastSync)
+			if err != nil {
+				err = er
+				return
+			}
+			lastSyncData = lastSyncFile{
+				LastSync: cachedLastSync,
+			}
 		}
+		ctx.DateFrom = &lastSyncData.LastSync
 	}
 	if ctx.DateTo != nil {
 		j.log.WithFields(logrus.Fields{"operation": "Sync"}).Infof("%s fetching till %v (%d threads)", j.URL, ctx.DateTo, thrN)
@@ -2557,6 +2664,7 @@ func (j *DSGerrit) Sync(ctx *shared.Ctx) (err error) {
 		allReviewsMtx = &sync.Mutex{}
 		eschaMtx = &sync.Mutex{}
 	}
+
 	nThreads := 0
 	processReview := func(c chan error, review map[string]interface{}) (wch chan error, e error) {
 		defer func() {
@@ -2702,14 +2810,7 @@ func (j *DSGerrit) Sync(ctx *shared.Ctx) (err error) {
 		j.log.WithFields(logrus.Fields{"operation": "Sync"}).Errorf("Error %v sending %d reviews to queue", err, len(allReviews))
 	}
 	// NOTE: Non-generic ends here
-	gMaxUpstreamDtMtx.Lock()
-	defer gMaxUpstreamDtMtx.Unlock()
-	if !gMaxUpstreamDt.IsZero() {
-		err = j.cacheProvider.SetLastSync(j.endpoint, gMaxUpstreamDt)
-		if err != nil {
-			j.log.WithFields(logrus.Fields{"operation": "Sync"}).Errorf("unable to set last sync date to cache.error: %v", err)
-		}
-	}
+	err = j.setLastSync(ctx)
 	return
 }
 
@@ -2807,7 +2908,7 @@ func (j *DSGerrit) getChangesetCache() {
 			orphaned = false
 		}
 
-		cachedChangesets[record[1]] = EntityCache{
+		cachedChangesets[record[4]] = EntityCache{
 			Timestamp:      record[0],
 			EntityID:       record[1],
 			SourceEntityID: record[2],
@@ -2815,6 +2916,7 @@ func (j *DSGerrit) getChangesetCache() {
 			Hash:           record[4],
 			Orphaned:       orphaned,
 		}
+		createdChangesets[record[1]] = true
 	}
 }
 
@@ -2928,12 +3030,91 @@ func (j *DSGerrit) createCacheFile(cache []EntityCache, path string) error {
 	return nil
 }
 
+func (j *DSGerrit) setLastSync(ctx *shared.Ctx) error {
+	changesCount := 0
+	for {
+		co, er := j.GetGerritReviewsCount(ctx, changesCount)
+		if er != nil {
+			return er
+		}
+		changesCount += co
+		if co < 500 {
+			break
+		}
+	}
+
+	changeID, err := j.GetGerritLatestReviews(ctx)
+	if err != nil {
+		return err
+	}
+
+	gMaxUpstreamDtMtx.Lock()
+	defer gMaxUpstreamDtMtx.Unlock()
+
+	lastSyncData := lastSyncFile{
+		LastSync: gMaxUpstreamDt,
+		Target:   changesCount,
+		Total:    len(createdChangesets),
+		Head:     changeID,
+	}
+
+	lastSyncDataB, err := jsoniter.Marshal(lastSyncData)
+	if err != nil {
+		return err
+	}
+
+	if !gMaxUpstreamDt.IsZero() {
+		err = j.cacheProvider.SetLastSyncFile(j.endpoint, lastSyncDataB)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func isKeyCreated(id string) bool {
 	_, ok := cachedChangesets[id]
 	if ok {
 		return true
 	}
 	return false
+}
+
+func isHashCreated(hash string) bool {
+	_, ok := cachedChangesets[hash]
+	if ok {
+		return true
+	}
+	return false
+}
+
+func createHash(changeset gerrit.Changeset) (string, error) {
+	changesetFields := ChangeSetHashFields{
+		Title:            changeset.Title,
+		Body:             changeset.Body,
+		ChangeRequestID:  changeset.ChangeRequestID,
+		ChangeRequestURL: changeset.ChangeRequestURL,
+		SourceTimeStamp:  changeset.SourceTimestamp,
+	}
+	b, err := jsoniter.Marshal(changesetFields)
+	if err != nil {
+		return "", err
+	}
+	contentHash := fmt.Sprintf("%x", sha256.Sum256(b))
+
+	return contentHash, err
+}
+
+func addChangesetToCache(changeset gerrit.Changeset, contentHash string, path string) {
+	tStamp := changeset.SyncTimestamp.Unix()
+	cachedChangesets[contentHash] = EntityCache{
+		Timestamp:      fmt.Sprintf("%v", tStamp),
+		EntityID:       changeset.ID,
+		SourceEntityID: changeset.ChangeRequest.ChangeRequestID,
+		Hash:           contentHash,
+		FileLocation:   path,
+	}
 }
 
 // EntityCache single commit cache schema
@@ -2944,4 +3125,26 @@ type EntityCache struct {
 	FileLocation   string `json:"file_location"`
 	Hash           string `json:"hash"`
 	Orphaned       bool   `json:"orphaned"`
+}
+
+type Changeset struct {
+	ID       string `json:"id"`
+	Number   int    `json:"number"`
+	RowCount int    `json:"rowCount"`
+}
+
+type lastSyncFile struct {
+	LastSync time.Time `json:"last_sync"`
+	Target   int       `json:"target,omitempty"`
+	Total    int       `json:"total,omitempty"`
+	Head     string    `json:"head,omitempty"`
+}
+
+// ChangeSetHashFields elected fields from commit schema to hash
+type ChangeSetHashFields struct {
+	Title            string
+	Body             string
+	ChangeRequestID  string
+	ChangeRequestURL string
+	SourceTimeStamp  time.Time
 }
